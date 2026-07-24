@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PVC Card Printing Studio — One Click Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+
+<style>
+  :root{
+    --bg:#1c1a17; --panel:#24211d; --panel-2:#2c2822; --line:#3a352d;
+    --amber:#e8a33d; --amber-dim:#a97a30; --cyan:#5fb8b0; --text:#f2ede4;
+    --text-dim:#a89f91; --danger:#d96a5a; --radius:4px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{ background:radial-gradient(circle at 15% 0%, rgba(232,163,61,0.06), transparent 40%), var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; }
+  ::selection{background:var(--amber);color:#1c1a17;}
+
+  .bracket{ position:relative; border:1px solid var(--line); background:var(--panel); border-radius:var(--radius); }
+  .bracket .bl,.bracket .br,.bracket .tl,.bracket .tr{
+    content:""; position:absolute; width:10px;height:10px; border-color:var(--amber); border-style:solid; opacity:.85;
+  }
+  .bracket .tl{ top:-1px; left:-1px; border-width:2px 0 0 2px; border-top-left-radius:var(--radius); }
+  .bracket .tr{ top:-1px; right:-1px; border-width:2px 2px 0 0; border-top-right-radius:var(--radius); }
+  .bracket .bl{ bottom:-1px; left:-1px; border-width:0 0 2px 2px; border-bottom-left-radius:var(--radius); }
+  .bracket .br{ bottom:-1px; right:-1px; border-width:0 2px 2px 0; border-bottom-right-radius:var(--radius); }
+
+  header{ padding:28px 5vw 20px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap;
+    gap:10px; border-bottom:1px solid var(--line); background:rgba(28,26,23,0.8); backdrop-filter:blur(8px);
+    position:sticky; top:0; z-index:100; }
+  .brand{display:flex;flex-direction:column;gap:4px;}
+  .brand .mark{ font-family:'Oswald',sans-serif; font-weight:700; letter-spacing:.06em; font-size:26px; text-transform:uppercase; color:var(--text); }
+  .brand .mark span{color:var(--amber);}
+  .brand .tag{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); letter-spacing:.08em; text-transform:uppercase; }
+  .brand .creator{ font-family:'Oswald',sans-serif; font-size:13px; color:var(--amber); letter-spacing:.05em; text-transform:uppercase; margin-top:2px; }
+  .roll-counter{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); letter-spacing:.05em; display:flex; gap:14px; flex-wrap:wrap; }
+  .roll-counter b{color:var(--amber);}
+
+  .topnav{ display:flex; gap:4px; padding:10px 5vw; background:var(--panel); border-bottom:1px solid var(--line);
+    position:sticky; top:88px; z-index:99; overflow-x:auto; }
+  .topnav a{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--text-dim); text-decoration:none; padding:8px 14px; border-radius:var(--radius); white-space:nowrap;
+    transition:all .15s; border:1px solid transparent; }
+  .topnav a:hover{ color:var(--text); background:var(--panel-2); }
+  .topnav a.active{ color:var(--amber); border-color:var(--amber-dim); background:var(--panel-2); }
+
+  main{ max-width:1220px; margin:0 auto; padding:34px 5vw 80px; display:flex; flex-direction:column; gap:30px; }
+
+  .step{ display:grid; grid-template-columns:56px 1fr; gap:18px; }
+  .step-num{ font-family:'Oswald',sans-serif; font-size:34px; font-weight:600; color:var(--line); line-height:1; padding-top:2px; }
+  .step-body{ padding:22px 22px 26px; box-shadow:0 4px 20px rgba(0,0,0,0.15); }
+  .step-title{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em; font-size:15px; font-weight:600; margin:0 0 4px; color:var(--text); }
+  .step-sub{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); margin:0 0 18px; }
+
+  .mini-label{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.06em; font-size:11.5px; color:var(--amber); margin:0 0 8px; }
+
+  label.field-label{ display:block; font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+  select, input[type=text], input[type=number], input[type=password]{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Inter',sans-serif;
+    font-size:13px; padding:9px 10px; border-radius:var(--radius); outline:none; transition:border-color .2s, box-shadow .2s; }
+  input[type=color]{ width:100%; height:38px; padding:2px; background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; }
+  select:focus, input:focus{ border-color:var(--amber); box-shadow:0 0 0 2px rgba(232,163,61,0.1); }
+
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:140px;}
+  .row.tight > div{min-width:100px;}
+
+  .preset-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; margin-top:10px; }
+  .preset-card{ border:1px solid var(--line); background:var(--panel-2); padding:12px 12px 10px; cursor:pointer; transition:all .15s; border-radius:var(--radius); }
+  .preset-card:hover{border-color:var(--amber-dim); transform:translateY(-1px);}
+  .preset-card.sel{border-color:var(--amber);background:#332b1c; box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+  .preset-card .pname{font-size:12.5px;font-weight:600;color:var(--text);}
+  .preset-card .pdim{ font-family:'IBM Plex Mono',monospace; font-size:10.5px;color:var(--amber);margin-top:4px; }
+  .preset-card .pcat{ font-family:'IBM Plex Mono',monospace; font-size:9px;color:var(--text-dim); text-transform:uppercase;letter-spacing:.05em;margin-top:2px; }
+
+  .btn{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em; font-size:12.5px; font-weight:600;
+    padding:11px 20px; border:1px solid var(--amber); background:var(--amber); color:#1c1a17; cursor:pointer;
+    border-radius:var(--radius); transition:all .15s; }
+  .btn:hover:not(:disabled){opacity:.9; transform:translateY(-1px); box-shadow:0 4px 12px rgba(232,163,61,0.2);}
+  .btn:active:not(:disabled){transform:translateY(0) scale(.98);}
+  .btn.ghost{ background:transparent;color:var(--amber); box-shadow:none;}
+  .btn.ghost:hover:not(:disabled){ background:rgba(232,163,61,0.1); }
+  .btn.cyan{ border-color:var(--cyan); color:var(--cyan); background:transparent; }
+  .btn.cyan:hover:not(:disabled){ background:rgba(95,184,176,0.12); }
+  .btn.small{padding:7px 14px;font-size:11px;}
+  .btn:disabled{opacity:.5;cursor:wait;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .dropzone{ border:1px dashed var(--line); border-radius:var(--radius); padding:22px 16px; text-align:center;
+    cursor:pointer; transition:all .2s ease; background:var(--panel-2); }
+  .dropzone:hover, .dropzone.drag{ border-color:var(--amber); background:#2f2a22; }
+  .dropzone p{ margin:6px 0 0; color:var(--text-dim); font-size:12px;}
+  .dropzone .icon{font-size:22px;}
+  input[type=file]{display:none;}
+  .thumb-row{display:flex;align-items:center;gap:14px;margin-top:12px; padding:10px; background:var(--panel-2); border-radius:var(--radius); border:1px solid var(--line);}
+  .thumb-row img{ width:56px;height:56px;object-fit:cover; border:1px solid var(--line); border-radius:2px; }
+  .thumb-meta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-dim);}
+  .thumb-meta b{color:var(--text);}
+  .link-btn{ background:none;border:none;color:var(--cyan); font-family:'IBM Plex Mono',monospace;font-size:11px; cursor:pointer;text-decoration:underline;padding:0; }
+
+  .handoff-banner{ display:none; margin-bottom:16px; padding:14px; border:1px solid var(--cyan); border-radius:var(--radius);
+    background:rgba(95,184,176,0.08); }
+  .handoff-banner p{ margin:0 0 10px; font-size:12.5px; color:var(--text); line-height:1.5; }
+
+  .side-tabs{display:flex;gap:8px;margin-bottom:16px;}
+
+  .crop-wrap{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+  .crop-box-outer{ position:relative; overflow:hidden; background:#fff; border:1px solid var(--line); cursor:grab;
+    touch-action:none; border-radius:var(--radius); box-shadow:inset 0 0 20px rgba(0,0,0,0.25); }
+  .crop-box-outer:active{cursor:grabbing;}
+  .crop-rotate-wrap{ position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; }
+  .crop-rotate-wrap img{ position:absolute; top:0;left:0; transform-origin:0 0; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+  .crop-controls{min-width:230px;display:flex;flex-direction:column;gap:16px;flex:1;}
+  input[type=range]{ width:100%;accent-color:var(--amber); cursor:pointer; }
+  .slider-row{display:flex;justify-content:space-between; align-items:center; font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:4px;}
+  .hint{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-dim);line-height:1.6; background:rgba(255,255,255,0.03); padding:10px; border-radius:var(--radius);}
+  .subhead{ font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.05em; font-size:11.5px;color:var(--text-dim);
+    margin:6px 0 2px;border-top:1px dashed var(--line);padding-top:12px; }
+
+  .panel{ border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-2); margin-bottom:10px; overflow:hidden; }
+  .panel[open]{ padding-bottom:14px; }
+  .panel summary{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em; font-size:11.5px;
+    color:var(--amber); padding:11px 14px; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; user-select:none; }
+  .panel summary::-webkit-details-marker{ display:none; }
+  .panel summary::after{ content:"+"; font-size:14px; color:var(--text-dim); }
+  .panel[open] summary::after{ content:"\2013"; }
+  .panel-body{ padding:2px 14px 0; display:flex; flex-direction:column; gap:14px; }
+  .check-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-dim); cursor:pointer;}
+  .check-row input{accent-color:var(--amber); cursor:pointer; width:16px; height:16px;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;}
+  .tab-btn{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.04em; font-size:11.5px;
+    padding:9px 16px; border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim); cursor:pointer; border-radius:var(--radius); }
+  .tab-btn.sel{ border-color:var(--amber); color:var(--amber); background:#332b1c; }
+  .tab-pane{display:none;}
+  .tab-pane.sel{display:block;}
+
+  /* true-size ruler preview */
+  .truesize-wrap{ display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .ruler-block{ background:repeating-conic-gradient(#2a2621 0% 25%, #241f1a 0% 50%) 50% / 12px 12px; padding:26px 26px 30px 30px;
+    border:1px solid var(--line); border-radius:var(--radius); overflow:auto; }
+  .ruler-grid{ display:grid; grid-template-columns:18px auto; grid-template-rows:18px auto; }
+  .ruler-corner{ background:transparent; }
+  .ruler-h{ position:relative; height:18px; background:#12100e; border-bottom:1px solid var(--line); }
+  .ruler-v{ position:relative; width:18px; background:#12100e; border-right:1px solid var(--line); }
+  .tick{ position:absolute; background:var(--text-dim); }
+  .tick-label{ position:absolute; font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--text-dim); }
+  .card-stage{ position:relative; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.55); }
+  .card-stage img.bleed-layer{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .overlay-line{ position:absolute; border:1px dashed rgba(217,106,90,0.85); pointer-events:none; }
+  .overlay-line.safe{ border-color:rgba(95,184,176,0.9); }
+  .stage-caption{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-dim); margin-top:8px; text-align:center; }
+
+  .sheet-wrap{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;}
+  .sheet-controls{min-width:250px;display:flex;flex-direction:column;gap:16px;flex:1;}
+  .sheet-preview-holder{ flex:2; min-width:280px; background:repeating-conic-gradient(#2a2621 0% 25%, #241f1a 0% 50%) 50% / 14px 14px;
+    border:1px solid var(--line); display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:center; gap:18px;
+    padding:16px; overflow:auto; border-radius:var(--radius); }
+  .sheet-canvas-col{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  canvas.sheet-canvas{ max-width:100%; height:auto; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.6); }
+  .sheet-canvas-label{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--amber); text-transform:uppercase; letter-spacing:.05em; }
+
+  .stat-line{ font-family:'IBM Plex Mono',monospace; font-size:11px;color:var(--text-dim); display:flex;justify-content:space-between;
+    border-top:1px dashed var(--line); padding-top:10px;margin-top:4px; }
+  .stat-line b{color:var(--amber);}
+
+  footer{ text-align:center; padding:26px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-dim);
+    border-top:1px solid var(--line); margin-top:40px; }
+
+  .swatches{display:flex;gap:8px;margin-top:4px;}
+  .swatch{ width:26px;height:26px;border-radius:50%; cursor:pointer;border:2px solid transparent; }
+  .swatch.sel{border-color:#fff; transform:scale(1.15); box-shadow:0 0 8px rgba(255,255,255,0.4); }
+
+  @media (max-width:640px){
+    .step{grid-template-columns:34px 1fr;}
+    .step-num{font-size:24px;}
+    .topnav{top:0;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark">ONE CLICK<span>·</span>STUDIO</div>
+    <div class="tag">PVC Card Printing — Real Dimensions · Bleed · Duplex Sheets</div>
+    <div class="creator">THIS MADE BY WAZAHAT KHAN</div>
+  </div>
+  <div class="roll-counter">
+    <span>CARD <b id="hdrSize">85.6×54mm</b></span>
+    <span>DPI <b id="hdrDpi">300</b></span>
+    <span>BLEED <b id="hdrBleed">2mm</b></span>
+    <span>CORNER <b id="hdrCorner">0mm</b></span>
+  </div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html">Home</a>
+  <a href="editor.html">Photo &amp; ID Editor</a>
+  <a href="pvc-print.html" class="active">PVC Card Printing Studio</a>
+</nav>
+
+<main>
+
+  <div class="handoff-banner bracket" id="handoffBanner">
+    <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+    <p>Found a card handed off from the <b style="color:var(--cyan)">Photo &amp; ID Editor</b> (<span id="handoffInfo">—</span>). Load it here, or start fresh below.</p>
+    <div class="btn-row">
+      <button class="btn small cyan" id="useHandoffBtn">Use this card</button>
+      <button class="btn ghost small" id="discardHandoffBtn">Start fresh instead</button>
+    </div>
+  </div>
+
+  <!-- STEP 1: CARD SETUP -->
+  <section class="step">
+    <div class="step-num">01</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Card Setup &amp; Artwork</h2>
+      <p class="step-sub">real-world PVC ID card dimensions (ISO/IEC 7810 ID-1 = 85.60 × 53.98mm, the standard ATM/PVC/lamination card size), plus your own custom size</p>
+
+      <div class="preset-grid" id="cardPresetGrid"></div>
+
+      <div class="row" style="margin-top:16px;">
+        <div>
+          <label class="field-label">Width (mm)</label>
+          <input type="number" id="cardWmm" step="0.01" min="20" max="200" value="85.60">
+        </div>
+        <div>
+          <label class="field-label">Height (mm)</label>
+          <input type="number" id="cardHmm" step="0.01" min="20" max="200" value="53.98">
+        </div>
+        <div>
+          <label class="field-label">Selected preset</label>
+          <input type="text" id="cardPresetName" value="CR80 Card — Landscape" disabled>
+        </div>
+      </div>
+
+      <div class="subhead">Front &amp; Back Artwork</div>
+      <div class="row" style="margin-top:8px;">
+        <div>
+          <div class="mini-label">Front Side</div>
+          <div class="dropzone" id="dzFront">
+            <div class="icon">🪪</div>
+            <div style="font-size:12.5px;color:var(--text);font-weight:500;">Click or drag a photo/design here</div>
+            <p>jpg / png — this becomes the front of the card</p>
+            <input type="file" id="fileFront" accept="image/*">
+          </div>
+          <div class="thumb-row" id="thumbRowFront" style="display:none;">
+            <img id="thumbFront" alt="front preview">
+            <div class="thumb-meta"><div><b id="thumbFrontName">—</b></div><div id="thumbFrontDims">—</div>
+              <button class="link-btn" id="changeFrontBtn">choose a different file</button></div>
+          </div>
+        </div>
+        <div>
+          <div class="mini-label">Back Side <span style="color:var(--text-dim);font-weight:400;">(optional)</span></div>
+          <div class="dropzone" id="dzBack">
+            <div class="icon">🪪</div>
+            <div style="font-size:12.5px;color:var(--text);font-weight:500;">Click or drag a photo/design here</div>
+            <p>jpg / png — this becomes the back of the card</p>
+            <input type="file" id="fileBack" accept="image/*">
+          </div>
+          <div class="thumb-row" id="thumbRowBack" style="display:none;">
+            <img id="thumbBack" alt="back preview">
+            <div class="thumb-meta"><div><b id="thumbBackName">—</b></div><div id="thumbBackDims">—</div>
+              <button class="link-btn" id="changeBackBtn">choose a different file</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: DESIGN & POSITION -->
+  <section class="step">
+    <div class="step-num">02</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Design, Crop &amp; Position</h2>
+      <p class="step-sub">drag to frame the card, then fine-tune — same on-device engine as the Photo &amp; ID Editor, no AI involved</p>
+
+      <div class="side-tabs">
+        <button class="btn small" id="tabFrontBtn">Front side</button>
+        <button class="btn ghost small" id="tabBackBtn">Back side</button>
+      </div>
+
+      <div class="crop-wrap">
+        <div class="crop-box-outer" id="cropOuter">
+          <div class="crop-rotate-wrap" id="cropRotateWrap"><img id="cropImg" alt=""></div>
+        </div>
+        <div class="crop-controls">
+          <details class="panel" open>
+            <summary>Position &amp; Transform</summary>
+            <div class="panel-body">
+              <div>
+                <div class="slider-row"><span>Zoom</span><span id="zoomLbl">100%</span></div>
+                <input type="range" id="zoomSlider" min="100" max="400" value="100">
+              </div>
+              <div class="btn-row">
+                <button class="btn ghost small" id="rotateLeftBtn">Rotate 90° L</button>
+                <button class="btn ghost small" id="rotateRightBtn">Rotate 90° R</button>
+                <button class="btn ghost small" id="flipBtn">Flip H</button>
+              </div>
+              <div class="btn-row">
+                <button class="btn ghost small" id="resetCropBtn">Reset position</button>
+              </div>
+            </div>
+          </details>
+          <details class="panel">
+            <summary>Colour Adjustments</summary>
+            <div class="panel-body">
+              <div><div class="slider-row"><span>Brightness</span><span id="brightLbl">100%</span></div>
+                <input type="range" id="brightSlider" min="50" max="150" value="100"></div>
+              <div><div class="slider-row"><span>Contrast</span><span id="contrastLbl">100%</span></div>
+                <input type="range" id="contrastSlider" min="50" max="150" value="100"></div>
+              <div><div class="slider-row"><span>Saturation</span><span id="satLbl">100%</span></div>
+                <input type="range" id="satSlider" min="0" max="200" value="100"></div>
+              <div>
+                <label class="field-label" style="display:flex;justify-content:space-between;align-items:center;">Background colour
+                  <input type="color" id="bgColorPicker" value="#ffffff" style="width:30px;height:20px;padding:0;border:none;cursor:pointer;"></label>
+              </div>
+              <p class="hint">Shown behind a transparent PNG design. All adjustments are plain canvas/CSS-filter math &mdash; fully coded, no AI models.</p>
+            </div>
+          </details>
+          <details class="panel">
+            <summary>Front Card Text (optional)</summary>
+            <div class="panel-body">
+              <div class="row">
+                <div><label class="field-label">Name line</label><input type="text" id="cardName" placeholder="e.g. RAHUL SHARMA"></div>
+                <div><label class="field-label">Sub line</label><input type="text" id="cardSub" placeholder="e.g. ID No. 04521"></div>
+              </div>
+              <div><label class="field-label">Accent colour</label><div class="swatches" id="swatches"></div></div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3: ADVANCED PRINT CONTROLS -->
+  <section class="step">
+    <div class="step-num">03</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Advanced Print Controls</h2>
+      <p class="step-sub">real PVC-card production settings — bleed, corner rounding and safe-zone are computed automatically, all in code</p>
+
+      <div class="row tight">
+        <div>
+          <label class="field-label">Print DPI</label>
+          <select id="dpiSelect">
+            <option value="300">300 DPI (standard)</option>
+            <option value="600" selected>600 DPI (card printers)</option>
+            <option value="1200">1200 DPI (max quality)</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Bleed (mm)</label>
+          <input type="number" id="bleedMm" value="2" min="0" max="6" step="0.5">
+        </div>
+        <div>
+          <label class="field-label">Corner Radius (mm)</label>
+          <select id="cornerRadiusSelect">
+            <option value="0">0 — square corners</option>
+            <option value="2.5">2.5mm — soft round</option>
+            <option value="3.18" selected>3.18mm — ISO/IEC 7810 standard</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </div>
+        <div id="customCornerRow" style="display:none;">
+          <label class="field-label">Custom radius (mm)</label>
+          <input type="number" id="cornerRadiusCustomMm" value="3.18" min="0" max="10" step="0.05">
+        </div>
+      </div>
+
+      <div class="row tight" style="margin-top:6px;">
+        <div>
+          <label class="field-label">Safe-zone margin (mm)</label>
+          <input type="number" id="safeMarginMm" value="3" min="0" max="10" step="0.5">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <label class="check-row"><input type="checkbox" id="autoBleedChk" checked> Auto-extend edges into bleed area</label>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <label class="check-row"><input type="checkbox" id="showGuidesChk" checked> Show bleed / safe-zone guides in preview</label>
+        </div>
+      </div>
+      <p class="hint">Bleed adds print-safe overflow beyond the card's true cut edge (auto-filled from your artwork's own edge pixels — no white gaps after cutting). The safe-zone marks the area to keep important text/faces inside, away from the die-cut edge. Corner radius rounds the card exactly like a real laminated / PVC ID card.</p>
+    </div>
+  </section>
+
+  <!-- STEP 4: PREVIEW -->
+  <section class="step">
+    <div class="step-num">04</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Preview</h2>
+      <p class="step-sub">check the card at true physical size, then lay it out on a print sheet</p>
+
+      <div class="tabs">
+        <button class="tab-btn sel" data-tab="actual">Actual-Size Preview</button>
+        <button class="tab-btn" data-tab="sheet">Sheet Layout</button>
+      </div>
+
+      <div class="tab-pane sel" id="pane-actual">
+        <div class="truesize-wrap">
+          <div>
+            <div class="ruler-block">
+              <div class="ruler-grid" id="rulerGridFront"></div>
+            </div>
+            <div class="stage-caption">Front — true size at 96 CSS px/inch (approx. actual on-screen mm)</div>
+          </div>
+          <div id="backStageWrap">
+            <div class="ruler-block">
+              <div class="ruler-grid" id="rulerGridBack"></div>
+            </div>
+            <div class="stage-caption">Back — true size</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="pane-sheet">
+        <div class="sheet-wrap">
+          <div class="sheet-controls">
+            <div>
+              <label class="field-label">Sheet size</label>
+              <select id="sheetSizeSel">
+                <option value="a4" selected>A4 (210 × 297 mm)</option>
+                <option value="a3">A3 (297 × 420 mm)</option>
+                <option value="letter">Letter (215.9 × 279.4 mm)</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div class="row tight" id="customSheetRow" style="display:none;">
+              <div><label class="field-label">Sheet W (mm)</label><input type="number" id="sheetWmm" value="210"></div>
+              <div><label class="field-label">Sheet H (mm)</label><input type="number" id="sheetHmm" value="297"></div>
+            </div>
+            <div class="row tight">
+              <div><label class="field-label">Margin (mm)</label><input type="number" id="sheetMarginMm" value="8" min="0" step="1"></div>
+              <div><label class="field-label">Gutter (mm)</label><input type="number" id="sheetGutterMm" value="4" min="0" step="0.5"></div>
+            </div>
+
+            <div class="subhead">Duplex (Front / Back) Mode</div>
+            <select id="duplexMode">
+              <option value="side">Side-by-side on one sheet (cut &amp; laminate)</option>
+              <option value="separate">Separate sheets — same grid position (feed card blanks front, then back)</option>
+              <option value="mirrored">Separate sheets — back mirrored (long-edge duplex printers)</option>
+            </select>
+
+            <div class="check-row" style="margin-top:6px;"><input type="checkbox" id="cropMarksChk" checked> <label for="cropMarksChk">Show crop / cut marks</label></div>
+            <div class="check-row"><input type="checkbox" id="regMarksChk"> <label for="regMarksChk">Show registration marks</label></div>
+
+            <div>
+              <label class="field-label">Copies needed</label>
+              <input type="number" id="copiesInput" min="1" value="1">
+            </div>
+            <button class="btn ghost small" id="autoFitBtn">Auto-fit maximum cards per sheet</button>
+
+            <div class="stat-line"><span>Cards per sheet</span><b id="cardsPerSheet">—</b></div>
+            <div class="stat-line"><span>Sheets needed</span><b id="sheetsNeeded">—</b></div>
+            <div class="stat-line"><span>Output resolution</span><b id="outRes">—</b></div>
+          </div>
+
+          <div class="sheet-preview-holder" id="sheetPreviewHolder"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 5: EXPORT -->
+  <section class="step">
+    <div class="step-num">05</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Export &amp; Print</h2>
+      <p class="step-sub">export the single card, or the full print sheet(s) — sizes are exact, in millimetres, matching your card setup above</p>
+
+      <div class="row tight">
+        <div>
+          <label class="field-label">Export format</label>
+          <select id="exportFormat">
+            <option value="png">PNG — image</option>
+            <option value="pdf">PDF — exact mm document</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="subhead">Single Card</div>
+      <div class="btn-row">
+        <button class="btn" id="exportFrontBtn">Export Front Card</button>
+        <button class="btn ghost" id="exportBackBtn">Export Back Card</button>
+      </div>
+
+      <div class="subhead">Full Sheet</div>
+      <div class="btn-row">
+        <button class="btn" id="exportSheetBtn">Download Sheet(s)</button>
+        <button class="btn ghost" id="printFrontSheetBtn">Print Front Sheet</button>
+        <button class="btn ghost" id="printBackSheetBtn" style="display:none;">Print Back Sheet</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  ONE CLICK STUDIO — PVC Card Printing Studio runs entirely on this device. Nothing you upload leaves your browser. No AI, no cloud — 100% coded locally.<br>
+  <a href="index.html" style="color:var(--amber);text-decoration:none;">Home</a> &nbsp;·&nbsp;
+  <a href="editor.html" style="color:var(--amber);text-decoration:none;">Photo &amp; ID Editor</a>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const MM_PER_INCH = 25.4;
+  const CSS_PX_PER_MM = 96 / MM_PER_INCH; // browsers treat 1in = 96 CSS px
+
+  const CARD_PRESETS = [
+    {name:"CR80 Card — Landscape", w:85.60, h:53.98},
+    {name:"CR80 Card — Portrait",  w:53.98, h:85.60},
+    {name:"Thick PVC (CR80, 30mil)", w:85.60, h:53.98},
+    {name:"Custom", w:85.60, h:53.98},
+  ];
+  const SWATCH_COLORS = ["#e8a33d","#5fb8b0","#d96a5a","#7a8fd9","#2c2822","#ffffff"];
+  const SHEET_PRESETS = { a4:{w:210,h:297}, a3:{w:297,h:420}, letter:{w:215.9,h:279.4} };
+
+  let DPI = 600;
+  const mmToPx = mm => Math.round(mm * DPI / MM_PER_INCH);
+
+  let g = {
+    wMm:85.60, hMm:53.98,
+    bleedMm:2, autoExtendBleed:true,
+    cornerRadiusMm:3.18, safeMarginMm:3, showGuides:true,
+    cardName:"", cardSub:"", accent:SWATCH_COLORS[0],
+    sheet:{ kind:"a4", wMm:210, hMm:297, marginMm:8, gutterMm:4, duplexMode:"side",
+      cropMarks:true, regMarks:false, copies:1 }
+  };
+
+  function newSide(){
+    return { img:null, fileName:"", zoom:1, offsetX:0, offsetY:0, baseScale:1, boxW:0, boxH:0,
+      rotateSteps:0, flipped:false, brightness:100, contrast:100, saturate:100, bgColor:"#ffffff" };
+  }
+  let sides = { front:newSide(), back:newSide() };
+  let activeSide = "front";
+
+  function cssFilterString(s){
+    return 'brightness('+s.brightness+'%) contrast('+s.contrast+'%) saturate('+s.saturate+'%)';
+  }
+
+  // ---------- Handoff from Photo & ID Editor ----------
+  const handoffBanner = document.getElementById('handoffBanner');
+  const handoffInfo = document.getElementById('handoffInfo');
+  let handoffData = null;
+  try{
+    const raw = localStorage.getItem('ocs_handoff');
+    if(raw) handoffData = JSON.parse(raw);
+  }catch(e){ handoffData = null; }
+  if(handoffData && handoffData.front){
+    handoffInfo.textContent = (handoffData.presetName||'card') + ', ' + handoffData.wMm + '×' + handoffData.hMm + 'mm' + (handoffData.twoSided ? ', 2-sided' : '');
+    handoffBanner.style.display = 'block';
+  }
+  document.getElementById('useHandoffBtn').addEventListener('click', ()=>{
+    if(!handoffData) return;
+    g.wMm = handoffData.wMm; g.hMm = handoffData.hMm;
+    cardWmmInput.value = g.wMm; cardHmmInput.value = g.hMm;
+    cardPresetNameInput.value = 'From Photo & ID Editor';
+    document.querySelectorAll('#cardPresetGrid .preset-card').forEach(c=>c.classList.remove('sel'));
+    loadImageInto('front', handoffData.front, 'front-from-editor.png');
+    if(handoffData.back) loadImageInto('back', handoffData.back, 'back-from-editor.png');
+    handoffBanner.style.display = 'none';
+    updateHeader();
+  });
+  document.getElementById('discardHandoffBtn').addEventListener('click', ()=>{
+    handoffBanner.style.display = 'none';
+  });
+
+  function loadImageInto(sideKey, dataUrl, filename){
+    const img = new Image();
+    img.onload = ()=>{
+      const s = sides[sideKey];
+      s.img = img; s.fileName = filename;
+      s.zoom=1; s.rotateSteps=0; s.flipped=false; s.brightness=100; s.contrast=100; s.saturate=100;
+      initSideFresh(sideKey);
+      const thumbImg = sideKey==='front' ? document.getElementById('thumbFront') : document.getElementById('thumbBack');
+      const thumbName = sideKey==='front' ? document.getElementById('thumbFrontName') : document.getElementById('thumbBackName');
+      const thumbDims = sideKey==='front' ? document.getElementById('thumbFrontDims') : document.getElementById('thumbBackDims');
+      const thumbRow = sideKey==='front' ? document.getElementById('thumbRowFront') : document.getElementById('thumbRowBack');
+      const dz = sideKey==='front' ? document.getElementById('dzFront') : document.getElementById('dzBack');
+      thumbImg.src = dataUrl; thumbName.textContent = filename;
+      thumbDims.textContent = img.naturalWidth+' x '+img.naturalHeight+' px';
+      thumbRow.style.display='flex'; dz.style.display='none';
+      if(activeSide===sideKey) renderActiveCropUI();
+      refreshAll();
+    };
+    img.src = dataUrl;
+  }
+
+  // ---------- Card size presets ----------
+  const cardPresetGrid = document.getElementById('cardPresetGrid');
+  const cardWmmInput = document.getElementById('cardWmm');
+  const cardHmmInput = document.getElementById('cardHmm');
+  const cardPresetNameInput = document.getElementById('cardPresetName');
+  CARD_PRESETS.forEach((p,i)=>{
+    const card = document.createElement('div');
+    card.className = 'preset-card' + (i===0?' sel':'');
+    card.innerHTML = '<div class="pname">'+p.name+'</div><div class="pdim">'+p.w+' × '+p.h+' mm</div><div class="pcat">ID-1 / PVC</div>';
+    card.addEventListener('click', ()=>{
+      document.querySelectorAll('#cardPresetGrid .preset-card').forEach(c=>c.classList.remove('sel'));
+      card.classList.add('sel');
+      g.wMm = p.w; g.hMm = p.h;
+      cardWmmInput.value = p.w; cardHmmInput.value = p.h;
+      cardPresetNameInput.value = p.name;
+      onCardSizeChanged();
+    });
+    cardPresetGrid.appendChild(card);
+  });
+  cardWmmInput.addEventListener('input', ()=>{ g.wMm = parseFloat(cardWmmInput.value)||g.wMm; cardPresetNameInput.value='Custom'; onCardSizeChanged(); });
+  cardHmmInput.addEventListener('input', ()=>{ g.hMm = parseFloat(cardHmmInput.value)||g.hMm; cardPresetNameInput.value='Custom'; onCardSizeChanged(); });
+
+  function onCardSizeChanged(){
+    initSideFresh('front'); initSideFresh('back');
+    renderActiveCropUI();
+    updateHeader();
+    refreshAll();
+  }
+
+  function updateHeader(){
+    document.getElementById('hdrSize').textContent = g.wMm+'×'+g.hMm+'mm';
+    document.getElementById('hdrDpi').textContent = DPI;
+    document.getElementById('hdrBleed').textContent = g.bleedMm+'mm';
+    document.getElementById('hdrCorner').textContent = g.cornerRadiusMm+'mm';
+  }
+
+  // ---------- Uploaders ----------
+  function wireUploader(dz, fileInput, thumbRow, thumbImg, thumbName, thumbDims, changeBtn, sideKey){
+    dz.addEventListener('click', ()=> fileInput.click());
+    dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+    dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+    dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+    changeBtn.addEventListener('click', ()=> fileInput.click());
+    function handleFile(file){
+      if(!file.type.startsWith('image/')){ alert('Please choose an image file (jpg/png).'); return; }
+      const reader = new FileReader();
+      reader.onload = ev=> loadImageInto(sideKey, ev.target.result, file.name);
+      reader.readAsDataURL(file);
+    }
+  }
+  wireUploader(document.getElementById('dzFront'), document.getElementById('fileFront'),
+    document.getElementById('thumbRowFront'), document.getElementById('thumbFront'),
+    document.getElementById('thumbFrontName'), document.getElementById('thumbFrontDims'),
+    document.getElementById('changeFrontBtn'), 'front');
+  wireUploader(document.getElementById('dzBack'), document.getElementById('fileBack'),
+    document.getElementById('thumbRowBack'), document.getElementById('thumbBack'),
+    document.getElementById('thumbBackName'), document.getElementById('thumbBackDims'),
+    document.getElementById('changeBackBtn'), 'back');
+
+  // ---------- Crop / position UI ----------
+  const cropOuter = document.getElementById('cropOuter');
+  const cropRotateWrap = document.getElementById('cropRotateWrap');
+  const cropImg = document.getElementById('cropImg');
+  const zoomSlider = document.getElementById('zoomSlider'), zoomLbl = document.getElementById('zoomLbl');
+  const brightSlider = document.getElementById('brightSlider'), brightLbl = document.getElementById('brightLbl');
+  const contrastSlider = document.getElementById('contrastSlider'), contrastLbl = document.getElementById('contrastLbl');
+  const satSlider = document.getElementById('satSlider'), satLbl = document.getElementById('satLbl');
+  const bgColorPicker = document.getElementById('bgColorPicker');
+  const tabFrontBtn = document.getElementById('tabFrontBtn'), tabBackBtn = document.getElementById('tabBackBtn');
+
+  function switchSide(sideKey){
+    activeSide = sideKey;
+    tabFrontBtn.classList.toggle('ghost', sideKey!=='front');
+    tabBackBtn.classList.toggle('ghost', sideKey!=='back');
+    renderActiveCropUI();
+  }
+  tabFrontBtn.addEventListener('click', ()=> switchSide('front'));
+  tabBackBtn.addEventListener('click', ()=> switchSide('back'));
+
+  function computeBoxDims(s){
+    const aspect = g.wMm/g.hMm;
+    let boxW, boxH; const MAXW=320, MAXH=320;
+    if(aspect>=1){ boxW=MAXW; boxH=boxW/aspect; if(boxH>MAXH){boxH=MAXH;boxW=boxH*aspect;} }
+    else { boxH=MAXH; boxW=boxH*aspect; if(boxW>MAXW){boxW=MAXW;boxH=boxW/aspect;} }
+    s.boxW=boxW; s.boxH=boxH;
+  }
+  function initSideFresh(sideKey){
+    const s = sides[sideKey];
+    computeBoxDims(s);
+    if(!s.img) return;
+    const nW=s.img.naturalWidth, nH=s.img.naturalHeight;
+    s.baseScale = Math.max(s.boxW/nW, s.boxH/nH);
+    s.zoom=1;
+    const dispW=nW*s.baseScale, dispH=nH*s.baseScale;
+    s.offsetX=(s.boxW-dispW)/2; s.offsetY=(s.boxH-dispH)/2;
+  }
+  function clampOffset(s){
+    const scale = s.baseScale*s.zoom;
+    const dispW = s.img.naturalWidth*scale, dispH = s.img.naturalHeight*scale;
+    const minX = s.boxW - dispW, minY = s.boxH - dispH;
+    if(s.offsetX > 0) s.offsetX = 0;
+    if(s.offsetY > 0) s.offsetY = 0;
+    if(s.offsetX < minX) s.offsetX = minX;
+    if(s.offsetY < minY) s.offsetY = minY;
+  }
+  function applyCropTransformFor(s){
+    cropOuter.style.width = (s.boxW||0)+'px';
+    cropOuter.style.height = (s.boxH||0)+'px';
+    cropOuter.style.background = s.bgColor;
+    if(!s.img){ cropImg.removeAttribute('src'); return; }
+    const scale = s.baseScale*s.zoom;
+    cropImg.style.transform = 'translate('+s.offsetX+'px,'+s.offsetY+'px) scale('+scale+')';
+    cropImg.style.width = s.img.naturalWidth+'px';
+    cropImg.style.height = s.img.naturalHeight+'px';
+    cropImg.style.filter = cssFilterString(s);
+    clampOffset(s);
+    refreshAll();
+  }
+  function syncSliders(s){
+    zoomSlider.value = Math.round(s.zoom*100); zoomLbl.textContent = Math.round(s.zoom*100)+'%';
+    brightSlider.value = s.brightness; brightLbl.textContent = s.brightness+'%';
+    contrastSlider.value = s.contrast; contrastLbl.textContent = s.contrast+'%';
+    satSlider.value = s.saturate; satLbl.textContent = s.saturate+'%';
+    bgColorPicker.value = s.bgColor;
+  }
+  function renderActiveCropUI(){
+    const s = sides[activeSide];
+    if(s.img) cropImg.src = s.img.src;
+    syncSliders(s);
+    applyCropTransformFor(s);
+  }
+  zoomSlider.addEventListener('input', ()=>{ const s=sides[activeSide]; s.zoom=parseFloat(zoomSlider.value)/100; zoomLbl.textContent=zoomSlider.value+'%'; applyCropTransformFor(s); });
+  brightSlider.addEventListener('input', ()=>{ const s=sides[activeSide]; s.brightness=parseInt(brightSlider.value); brightLbl.textContent=brightSlider.value+'%'; applyCropTransformFor(s); });
+  contrastSlider.addEventListener('input', ()=>{ const s=sides[activeSide]; s.contrast=parseInt(contrastSlider.value); contrastLbl.textContent=contrastSlider.value+'%'; applyCropTransformFor(s); });
+  satSlider.addEventListener('input', ()=>{ const s=sides[activeSide]; s.saturate=parseInt(satSlider.value); satLbl.textContent=satSlider.value+'%'; applyCropTransformFor(s); });
+  bgColorPicker.addEventListener('input', ()=>{ const s=sides[activeSide]; s.bgColor=bgColorPicker.value; applyCropTransformFor(s); });
+
+  document.getElementById('resetCropBtn').addEventListener('click', ()=>{ initSideFresh(activeSide); renderActiveCropUI(); });
+  document.getElementById('rotateLeftBtn').addEventListener('click', ()=> rotateImage90(-1));
+  document.getElementById('rotateRightBtn').addEventListener('click', ()=> rotateImage90(1));
+  document.getElementById('flipBtn').addEventListener('click', flipImageH);
+
+  function rotateImage90(direction){
+    const s = sides[activeSide]; if(!s.img) return;
+    const src = s.img;
+    const c = document.createElement('canvas');
+    c.width = src.naturalHeight; c.height = src.naturalWidth;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality='high';
+    ctx.translate(c.width/2, c.height/2); ctx.rotate(direction*Math.PI/2);
+    ctx.drawImage(src, -src.naturalWidth/2, -src.naturalHeight/2);
+    const newImg = new Image();
+    newImg.onload = ()=>{ s.img = newImg; initSideFresh(activeSide); renderActiveCropUI(); };
+    newImg.src = c.toDataURL('image/png');
+  }
+  function flipImageH(){
+    const s = sides[activeSide]; if(!s.img) return;
+    const src = s.img;
+    const c = document.createElement('canvas');
+    c.width = src.naturalWidth; c.height = src.naturalHeight;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality='high';
+    ctx.translate(c.width,0); ctx.scale(-1,1); ctx.drawImage(src,0,0);
+    const newImg = new Image();
+    newImg.onload = ()=>{ s.img = newImg; initSideFresh(activeSide); renderActiveCropUI(); };
+    newImg.src = c.toDataURL('image/png');
+  }
+
+  let dragging=false, dragStartX=0, dragStartY=0, startOffX=0, startOffY=0;
+  cropOuter.addEventListener('mousedown', e=>{ const s=sides[activeSide]; if(!s.img) return; dragging=true; dragStartX=e.clientX; dragStartY=e.clientY; startOffX=s.offsetX; startOffY=s.offsetY; });
+  window.addEventListener('mousemove', e=>{ if(!dragging) return; const s=sides[activeSide]; s.offsetX=startOffX+(e.clientX-dragStartX); s.offsetY=startOffY+(e.clientY-dragStartY); applyCropTransformFor(s); });
+  window.addEventListener('mouseup', ()=> dragging=false);
+  cropOuter.addEventListener('touchstart', e=>{ const s=sides[activeSide]; if(!s.img||!e.touches[0]) return; dragging=true; dragStartX=e.touches[0].clientX; dragStartY=e.touches[0].clientY; startOffX=s.offsetX; startOffY=s.offsetY; }, {passive:true});
+  cropOuter.addEventListener('touchmove', e=>{ if(!dragging||!e.touches[0]) return; const s=sides[activeSide]; s.offsetX=startOffX+(e.touches[0].clientX-dragStartX); s.offsetY=startOffY+(e.touches[0].clientY-dragStartY); applyCropTransformFor(s); }, {passive:true});
+  cropOuter.addEventListener('touchend', ()=> dragging=false);
+
+  // Card name/sub text + accent
+  const swatchesEl = document.getElementById('swatches');
+  SWATCH_COLORS.forEach((c,i)=>{
+    const sw = document.createElement('div'); sw.className='swatch'+(i===0?' sel':''); sw.style.background=c;
+    sw.addEventListener('click', ()=>{ document.querySelectorAll('.swatch').forEach(el=>el.classList.remove('sel')); sw.classList.add('sel'); g.accent=c; refreshAll(); });
+    swatchesEl.appendChild(sw);
+  });
+  document.getElementById('cardName').addEventListener('input', e=>{ g.cardName=e.target.value; refreshAll(); });
+  document.getElementById('cardSub').addEventListener('input', e=>{ g.cardSub=e.target.value; refreshAll(); });
+
+  // ---------- Core render: card canvas at any pixel size (no bleed) ----------
+  function renderCardCanvas(sideKey, pxW, pxH){
+    const s = sides[sideKey];
+    const c = document.createElement('canvas');
+    c.width = pxW; c.height = pxH;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = s.bgColor; ctx.fillRect(0,0,pxW,pxH);
+    if(s.img){
+      const outScale = pxW / s.boxW;
+      const scale = s.baseScale*s.zoom*outScale;
+      const dx = s.offsetX*outScale, dy = s.offsetY*outScale;
+      const dw = s.img.naturalWidth*scale, dh = s.img.naturalHeight*scale;
+      try{ ctx.filter = cssFilterString(s); }catch(e){}
+      ctx.drawImage(s.img, dx, dy, dw, dh);
+      ctx.filter = 'none';
+    }
+    return c;
+  }
+
+  function applyCardTextOverlay(canvas){
+    if(!g.cardName && !g.cardSub) return canvas;
+    const ctx = canvas.getContext('2d');
+    const stripH = canvas.height*0.20;
+    const y0 = canvas.height - stripH;
+    ctx.fillStyle = g.accent;
+    ctx.fillRect(0, y0, canvas.width, stripH);
+    ctx.fillStyle = (g.accent === '#ffffff') ? '#1c1a17' : '#ffffff';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 '+Math.round(stripH*0.36)+'px Arial';
+    ctx.fillText(g.cardName||'', canvas.width*0.05, y0+stripH*0.38, canvas.width*0.9);
+    ctx.font = '400 '+Math.round(stripH*0.26)+'px Arial';
+    ctx.fillText(g.cardSub||'', canvas.width*0.05, y0+stripH*0.72, canvas.width*0.9);
+    return canvas;
+  }
+
+  // ---------- Corner radius clipping ----------
+  function roundCorners(canvas, radiusPx){
+    if(radiusPx<=0) return canvas;
+    const out = document.createElement('canvas');
+    out.width = canvas.width; out.height = canvas.height;
+    const ctx = out.getContext('2d');
+    const w=canvas.width, h=canvas.height, r=Math.min(radiusPx, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(r,0); ctx.arcTo(w,0,w,h,r); ctx.arcTo(w,h,0,h,r); ctx.arcTo(0,h,0,0,r); ctx.arcTo(0,0,w,0,r);
+    ctx.closePath(); ctx.clip();
+    ctx.drawImage(canvas,0,0);
+    return out;
+  }
+
+  // ---------- Auto bleed: edge-extend the artwork outward ----------
+  function addBleed(canvas, bleedPx){
+    if(bleedPx<=0) return canvas;
+    const w=canvas.width, h=canvas.height;
+    const out = document.createElement('canvas');
+    out.width = w+bleedPx*2; out.height = h+bleedPx*2;
+    const ctx = out.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    if(g.autoExtendBleed){
+      // edge strips, stretched outward from the outermost 1px of the card
+      ctx.drawImage(canvas, 0,0,w,1, bleedPx,0,w,bleedPx);              // top
+      ctx.drawImage(canvas, 0,h-1,w,1, bleedPx,bleedPx+h,w,bleedPx);    // bottom
+      ctx.drawImage(canvas, 0,0,1,h, 0,bleedPx,bleedPx,h);              // left
+      ctx.drawImage(canvas, w-1,0,1,h, bleedPx+w,bleedPx,bleedPx,h);    // right
+      // corners, stretched from the single corner pixel
+      ctx.drawImage(canvas, 0,0,1,1, 0,0,bleedPx,bleedPx);
+      ctx.drawImage(canvas, w-1,0,1,1, bleedPx+w,0,bleedPx,bleedPx);
+      ctx.drawImage(canvas, 0,h-1,1,1, 0,bleedPx+h,bleedPx,bleedPx);
+      ctx.drawImage(canvas, w-1,h-1,1,1, bleedPx+w,bleedPx+h,bleedPx,bleedPx);
+    } else {
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,out.width,out.height);
+    }
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality='high';
+    ctx.drawImage(canvas, bleedPx, bleedPx, w, h);
+    return out;
+  }
+
+  // Full pipeline: crop -> (front text overlay) -> bleed -> rounded corners
+  function buildFinalCard(sideKey, pxW, pxH, bleedPx, radiusPx){
+    let c = renderCardCanvas(sideKey, pxW, pxH);
+    if(sideKey==='front') c = applyCardTextOverlay(c);
+    c = addBleed(c, bleedPx);
+    c = roundCorners(c, radiusPx);
+    return c;
+  }
+
+  function effectiveCornerRadiusMm(){ return g.cornerRadiusMm; }
+
+  // ---------- Advanced controls wiring ----------
+  const dpiSelect = document.getElementById('dpiSelect');
+  const bleedMmInput = document.getElementById('bleedMm');
+  const cornerRadiusSelect = document.getElementById('cornerRadiusSelect');
+  const customCornerRow = document.getElementById('customCornerRow');
+  const cornerRadiusCustomMm = document.getElementById('cornerRadiusCustomMm');
+  const safeMarginMmInput = document.getElementById('safeMarginMm');
+  const autoBleedChk = document.getElementById('autoBleedChk');
+  const showGuidesChk = document.getElementById('showGuidesChk');
+
+  dpiSelect.addEventListener('change', ()=>{ DPI = parseInt(dpiSelect.value)||600; updateHeader(); refreshAll(); });
+  bleedMmInput.addEventListener('input', ()=>{ g.bleedMm = Math.max(0, parseFloat(bleedMmInput.value)||0); updateHeader(); refreshAll(); });
+  cornerRadiusSelect.addEventListener('change', ()=>{
+    if(cornerRadiusSelect.value==='custom'){ customCornerRow.style.display='block'; g.cornerRadiusMm = parseFloat(cornerRadiusCustomMm.value)||0; }
+    else { customCornerRow.style.display='none'; g.cornerRadiusMm = parseFloat(cornerRadiusSelect.value); }
+    updateHeader(); refreshAll();
+  });
+  cornerRadiusCustomMm.addEventListener('input', ()=>{ g.cornerRadiusMm = parseFloat(cornerRadiusCustomMm.value)||0; updateHeader(); refreshAll(); });
+  safeMarginMmInput.addEventListener('input', ()=>{ g.safeMarginMm = parseFloat(safeMarginMmInput.value)||0; refreshAll(); });
+  autoBleedChk.addEventListener('change', ()=>{ g.autoExtendBleed = autoBleedChk.checked; refreshAll(); });
+  showGuidesChk.addEventListener('change', ()=>{ g.showGuides = showGuidesChk.checked; refreshAll(); });
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('sel'));
+      document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('sel'));
+      btn.classList.add('sel');
+      document.getElementById('pane-'+btn.dataset.tab).classList.add('sel');
+      refreshAll();
+    });
+  });
+
+  // ---------- Actual-size ruler preview ----------
+  function buildRuler(containerId, wMm, hMm, dataUrl, showBack){
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = '';
+    const totalWmm = wMm + g.bleedMm*2, totalHmm = hMm + g.bleedMm*2;
+    const stageWpx = totalWmm * CSS_PX_PER_MM, stageHpx = totalHmm * CSS_PX_PER_MM;
+
+    const corner = document.createElement('div'); corner.className='ruler-corner';
+    const hRuler = document.createElement('div'); hRuler.className='ruler-h'; hRuler.style.width=stageWpx+'px';
+    const vRuler = document.createElement('div'); vRuler.className='ruler-v'; vRuler.style.height=stageHpx+'px';
+    const stageHolder = document.createElement('div'); stageHolder.style.position='relative';
+
+    for(let mm=0; mm<=totalWmm; mm+=1){
+      const x = mm*CSS_PX_PER_MM;
+      const tall = (mm % 10 === 0);
+      const t = document.createElement('div'); t.className='tick';
+      t.style.left=x+'px'; t.style.bottom='0'; t.style.width='1px'; t.style.height=(tall?'10px':'5px');
+      hRuler.appendChild(t);
+      if(tall){ const lab=document.createElement('div'); lab.className='tick-label'; lab.style.left=(x+1)+'px'; lab.style.top='2px'; lab.textContent=mm; hRuler.appendChild(lab); }
+    }
+    for(let mm=0; mm<=totalHmm; mm+=1){
+      const y = mm*CSS_PX_PER_MM;
+      const tall = (mm % 10 === 0);
+      const t = document.createElement('div'); t.className='tick';
+      t.style.top=y+'px'; t.style.right='0'; t.style.height='1px'; t.style.width=(tall?'10px':'5px');
+      vRuler.appendChild(t);
+    }
+
+    const stage = document.createElement('div'); stage.className='card-stage';
+    stage.style.width = stageWpx+'px'; stage.style.height = stageHpx+'px';
+    if(dataUrl){ const img=document.createElement('img'); img.className='bleed-layer'; img.src=dataUrl; stage.appendChild(img); }
+
+    if(g.showGuides){
+      const bleedPx = g.bleedMm*CSS_PX_PER_MM;
+      const trim = document.createElement('div'); trim.className='overlay-line';
+      trim.style.left=bleedPx+'px'; trim.style.top=bleedPx+'px';
+      trim.style.width=(wMm*CSS_PX_PER_MM)+'px'; trim.style.height=(hMm*CSS_PX_PER_MM)+'px';
+      stage.appendChild(trim);
+      const safePx = g.safeMarginMm*CSS_PX_PER_MM;
+      const safe = document.createElement('div'); safe.className='overlay-line safe';
+      safe.style.left=(bleedPx+safePx)+'px'; safe.style.top=(bleedPx+safePx)+'px';
+      safe.style.width=((wMm-g.safeMarginMm*2)*CSS_PX_PER_MM)+'px'; safe.style.height=((hMm-g.safeMarginMm*2)*CSS_PX_PER_MM)+'px';
+      stage.appendChild(safe);
+    }
+    stageHolder.appendChild(stage);
+
+    grid.appendChild(corner); grid.appendChild(hRuler); grid.appendChild(vRuler); grid.appendChild(stageHolder);
+  }
+
+  function renderActualSizePreview(){
+    if(!sides.front.img){
+      document.getElementById('rulerGridFront').innerHTML = '<div style="grid-column:1/3;color:var(--text-dim);font-family:IBM Plex Mono,monospace;font-size:11px;padding:20px;">Upload a front design to preview.</div>';
+      document.getElementById('rulerGridBack').innerHTML='';
+      document.getElementById('backStageWrap').style.display='none';
+      return;
+    }
+    const bleedPx = mmToPx(g.bleedMm);
+    const radiusPx = mmToPx(g.cornerRadiusMm);
+    const pxW = mmToPx(g.wMm), pxH = mmToPx(g.hMm);
+    const frontFinal = buildFinalCard('front', pxW, pxH, bleedPx, radiusPx);
+    buildRuler('rulerGridFront', g.wMm, g.hMm, frontFinal.toDataURL('image/png'), false);
+    if(sides.back.img){
+      document.getElementById('backStageWrap').style.display='block';
+      const backFinal = buildFinalCard('back', pxW, pxH, bleedPx, radiusPx);
+      buildRuler('rulerGridBack', g.wMm, g.hMm, backFinal.toDataURL('image/png'), true);
+    } else {
+      document.getElementById('backStageWrap').style.display='none';
+    }
+  }
+
+  // ---------- Sheet layout ----------
+  const sheetSizeSel = document.getElementById('sheetSizeSel');
+  const customSheetRow = document.getElementById('customSheetRow');
+  const sheetWmmInput = document.getElementById('sheetWmm'), sheetHmmInput = document.getElementById('sheetHmm');
+  const sheetMarginMmInput = document.getElementById('sheetMarginMm');
+  const sheetGutterMmInput = document.getElementById('sheetGutterMm');
+  const duplexModeSel = document.getElementById('duplexMode');
+  const cropMarksChk = document.getElementById('cropMarksChk');
+  const regMarksChk = document.getElementById('regMarksChk');
+  const copiesInput = document.getElementById('copiesInput');
+  const cardsPerSheetEl = document.getElementById('cardsPerSheet');
+  const sheetsNeededEl = document.getElementById('sheetsNeeded');
+  const outResEl = document.getElementById('outRes');
+  const sheetPreviewHolder = document.getElementById('sheetPreviewHolder');
+  const printBackSheetBtn = document.getElementById('printBackSheetBtn');
+
+  sheetSizeSel.addEventListener('change', ()=>{
+    g.sheet.kind = sheetSizeSel.value;
+    customSheetRow.style.display = g.sheet.kind==='custom' ? 'flex':'none';
+    if(SHEET_PRESETS[g.sheet.kind]){ g.sheet.wMm=SHEET_PRESETS[g.sheet.kind].w; g.sheet.hMm=SHEET_PRESETS[g.sheet.kind].h; }
+    refreshAll();
+  });
+  sheetWmmInput.addEventListener('input', ()=>{ g.sheet.wMm=parseFloat(sheetWmmInput.value)||g.sheet.wMm; refreshAll(); });
+  sheetHmmInput.addEventListener('input', ()=>{ g.sheet.hMm=parseFloat(sheetHmmInput.value)||g.sheet.hMm; refreshAll(); });
+  sheetMarginMmInput.addEventListener('input', ()=>{ g.sheet.marginMm=parseFloat(sheetMarginMmInput.value)||0; refreshAll(); });
+  sheetGutterMmInput.addEventListener('input', ()=>{ g.sheet.gutterMm=parseFloat(sheetGutterMmInput.value)||0; refreshAll(); });
+  duplexModeSel.addEventListener('change', ()=>{ g.sheet.duplexMode = duplexModeSel.value; refreshAll(); });
+  cropMarksChk.addEventListener('change', ()=>{ g.sheet.cropMarks = cropMarksChk.checked; refreshAll(); });
+  regMarksChk.addEventListener('change', ()=>{ g.sheet.regMarks = regMarksChk.checked; refreshAll(); });
+  copiesInput.addEventListener('input', ()=>{ g.sheet.copies = Math.max(1, parseInt(copiesInput.value)||1); refreshAll(); });
+
+  function computeGrid(){
+    const totalCardWmm = g.wMm + g.bleedMm*2, totalCardHmm = g.hMm + g.bleedMm*2;
+    const usableW = g.sheet.wMm - g.sheet.marginMm*2;
+    const usableH = g.sheet.hMm - g.sheet.marginMm*2;
+    const cols = Math.max(0, Math.floor((usableW+g.sheet.gutterMm)/(totalCardWmm+g.sheet.gutterMm)));
+    const rows = Math.max(0, Math.floor((usableH+g.sheet.gutterMm)/(totalCardHmm+g.sheet.gutterMm)));
+    return {cols, rows, max:cols*rows, cardWmm:totalCardWmm, cardHmm:totalCardHmm};
+  }
+  document.getElementById('autoFitBtn').addEventListener('click', ()=>{
+    const grid = computeGrid();
+    copiesInput.value = Math.max(1, grid.max);
+    g.sheet.copies = parseInt(copiesInput.value);
+    refreshAll();
+  });
+
+  function drawCropMarks(ctx, x, y, w, h, lenPx){
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+    const pts = [[x,y],[x+w,y],[x,y+h],[x+w,y+h]];
+    pts.forEach(([px,py], i)=>{
+      const dx = i%2===0 ? -1 : 1, dy = i<2 ? -1 : 1;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py+dy*lenPx); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px+dx*lenPx, py); ctx.stroke();
+    });
+  }
+  function drawRegMarks(ctx, x, y, w, h){
+    const cx = x+w/2, cy = y-6;
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 0.75;
+    ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-5,cy); ctx.lineTo(cx+5,cy); ctx.moveTo(cx,cy-5); ctx.lineTo(cx,cy+5); ctx.stroke();
+  }
+
+  function drawSheet(ctx, sheetPxW, sheetPxH, grid, cardCanvas, mirrorAll){
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,sheetPxW,sheetPxH);
+    const marginPx = mmToPx(g.sheet.marginMm), gutterPx = mmToPx(g.sheet.gutterMm);
+    const cardWpx = mmToPx(grid.cardWmm), cardHpx = mmToPx(grid.cardHmm);
+    let placed = 0;
+    outer:
+    for(let r=0;r<grid.rows;r++){
+      for(let c=0;c<grid.cols;c++){
+        if(placed >= g.sheet.copies) break outer;
+        const x = marginPx + c*(cardWpx+gutterPx);
+        const y = marginPx + r*(cardHpx+gutterPx);
+        ctx.drawImage(cardCanvas, x, y, cardWpx, cardHpx);
+        if(g.sheet.cropMarks) drawCropMarks(ctx, x, y, cardWpx, cardHpx, mmToPx(3));
+        if(g.sheet.regMarks) drawRegMarks(ctx, x, y, cardWpx, cardHpx);
+        placed++;
+      }
+    }
+    if(mirrorAll){
+      const out = document.createElement('canvas'); out.width=sheetPxW; out.height=sheetPxH;
+      const octx = out.getContext('2d');
+      octx.translate(sheetPxW,0); octx.scale(-1,1);
+      octx.drawImage(ctx.canvas, 0, 0);
+      return out;
+    }
+    return ctx.canvas;
+  }
+
+  let lastSheetCanvases = { front:null, back:null };
+
+  function renderSheetLayout(){
+    sheetPreviewHolder.innerHTML = '';
+    const grid = computeGrid();
+    cardsPerSheetEl.textContent = grid.max > 0 ? grid.max : '0 (card too big for sheet)';
+    if(g.sheet.copies > grid.max && grid.max>0) { g.sheet.copies = grid.max; copiesInput.value = grid.max; }
+    if(!copiesInput.value) copiesInput.value = Math.max(1, grid.max);
+    sheetsNeededEl.textContent = grid.max>0 ? Math.ceil(g.sheet.copies / grid.max) : '—';
+    const sheetPxW = mmToPx(g.sheet.wMm), sheetPxH = mmToPx(g.sheet.hMm);
+    outResEl.textContent = sheetPxW+' × '+sheetPxH+' px';
+
+    if(!sides.front.img){
+      const holder = document.createElement('div'); holder.style.color='var(--text-dim)'; holder.style.fontFamily="'IBM Plex Mono',monospace";
+      holder.style.fontSize='12px'; holder.textContent = 'Upload a front design to see the sheet layout.';
+      sheetPreviewHolder.appendChild(holder);
+      return;
+    }
+
+    const bleedPx = mmToPx(g.bleedMm), radiusPx = mmToPx(g.cornerRadiusMm);
+    const cardPxW = mmToPx(g.wMm), cardPxH = mmToPx(g.hMm);
+    const frontCard = buildFinalCard('front', cardPxW, cardPxH, bleedPx, radiusPx);
+    const backCard = sides.back.img ? buildFinalCard('back', cardPxW, cardPxH, bleedPx, radiusPx) : null;
+
+    function makeCanvas(){ const c=document.createElement('canvas'); c.className='sheet-canvas'; c.width=sheetPxW; c.height=sheetPxH; return c; }
+
+    if(g.sheet.duplexMode === 'side' ){
+      // combined single-sheet layout: pair front+back per unit if back exists, else just front repeated
+      const c = makeCanvas(); const ctx = c.getContext('2d');
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,sheetPxW,sheetPxH);
+      const marginPx = mmToPx(g.sheet.marginMm), gutterPx = mmToPx(g.sheet.gutterMm), innerGutterPx = mmToPx(2);
+      const cardWpx = mmToPx(g.wMm+g.bleedMm*2), cardHpx = mmToPx(g.hMm+g.bleedMm*2);
+      const unitWpx = backCard ? cardWpx*2+innerGutterPx : cardWpx;
+      const usableW = g.sheet.wMm - g.sheet.marginMm*2, usableH = g.sheet.hMm - g.sheet.marginMm*2;
+      const unitWmm = backCard ? (g.wMm+g.bleedMm*2)*2 + 2 : (g.wMm+g.bleedMm*2);
+      const unitHmm = g.hMm+g.bleedMm*2;
+      const cols = Math.max(0, Math.floor((usableW+g.sheet.gutterMm)/(unitWmm+g.sheet.gutterMm)));
+      const rows = Math.max(0, Math.floor((usableH+g.sheet.gutterMm)/(unitHmm+g.sheet.gutterMm)));
+      let placed=0;
+      outer1:
+      for(let r=0;r<rows;r++){ for(let cI=0;cI<cols;cI++){
+        if(placed>=g.sheet.copies) break outer1;
+        const x = marginPx + cI*(unitWpx+gutterPx), y = marginPx + r*(cardHpx+gutterPx);
+        ctx.drawImage(frontCard, x, y, cardWpx, cardHpx);
+        if(g.sheet.cropMarks) drawCropMarks(ctx, x, y, cardWpx, cardHpx, mmToPx(3));
+        if(backCard){ ctx.drawImage(backCard, x+cardWpx+innerGutterPx, y, cardWpx, cardHpx); if(g.sheet.cropMarks) drawCropMarks(ctx, x+cardWpx+innerGutterPx, y, cardWpx, cardHpx, mmToPx(3)); }
+        placed++;
+      }}
+      cardsPerSheetEl.textContent = (cols*rows) || '0 (card too big for sheet)';
+      sheetsNeededEl.textContent = (cols*rows)>0 ? Math.ceil(g.sheet.copies/(cols*rows)) : '—';
+      lastSheetCanvases = { front:c, back:null };
+      const col = document.createElement('div'); col.className='sheet-canvas-col';
+      col.innerHTML = '<div class="sheet-canvas-label">Combined Sheet</div>';
+      col.appendChild(c);
+      sheetPreviewHolder.appendChild(col);
+      printBackSheetBtn.style.display = 'none';
+    } else {
+      // separate sheets: front sheet + back sheet (same grid positions)
+      const cf = makeCanvas(); const ctxf = cf.getContext('2d');
+      const frontResult = drawSheet(ctxf, sheetPxW, sheetPxH, grid, frontCard, false);
+      const colF = document.createElement('div'); colF.className='sheet-canvas-col';
+      colF.innerHTML = '<div class="sheet-canvas-label">Front Sheet</div>';
+      colF.appendChild(frontResult);
+      sheetPreviewHolder.appendChild(colF);
+      lastSheetCanvases.front = frontResult;
+
+      if(backCard){
+        const cb = makeCanvas(); const ctxb = cb.getContext('2d');
+        const mirror = g.sheet.duplexMode === 'mirrored';
+        const backResult = drawSheet(ctxb, sheetPxW, sheetPxH, grid, backCard, mirror);
+        const colB = document.createElement('div'); colB.className='sheet-canvas-col';
+        colB.innerHTML = '<div class="sheet-canvas-label">Back Sheet'+(mirror?' (mirrored)':'')+'</div>';
+        colB.appendChild(backResult);
+        sheetPreviewHolder.appendChild(colB);
+        lastSheetCanvases.back = backResult;
+        printBackSheetBtn.style.display = 'inline-block';
+      } else {
+        lastSheetCanvases.back = null;
+        printBackSheetBtn.style.display = 'none';
+      }
+    }
+  }
+
+  // ---------- Refresh orchestration ----------
+  function refreshAll(){
+    updateHeader();
+    const actualPaneVisible = document.getElementById('pane-actual').classList.contains('sel');
+    if(actualPaneVisible) renderActualSizePreview();
+    else renderSheetLayout();
+  }
+
+  // ---------- Export ----------
+  function safeName(prefix){ return 'pvc_'+prefix+'_'+(g.wMm+'x'+g.hMm).replace('.','_'); }
+
+  function exportCard(sideKey){
+    if(!sides[sideKey].img){ alert('Please upload a '+sideKey+' design first.'); return; }
+    const bleedPx = mmToPx(g.bleedMm), radiusPx = mmToPx(g.cornerRadiusMm);
+    const pxW = mmToPx(g.wMm), pxH = mmToPx(g.hMm);
+    const card = buildFinalCard(sideKey, pxW, pxH, bleedPx, radiusPx);
+    const fmt = document.getElementById('exportFormat').value;
+    const totalWmm = g.wMm+g.bleedMm*2, totalHmm = g.hMm+g.bleedMm*2;
+    if(fmt==='pdf'){
+      if(!window.jspdf){ alert('PDF library failed to load — check your internet connection.'); return; }
+      const { jsPDF } = window.jspdf;
+      const orientation = totalWmm > totalHmm ? 'l':'p';
+      const pdf = new jsPDF({orientation, unit:'mm', format:[totalWmm, totalHmm]});
+      pdf.addImage(card.toDataURL('image/png'), 'PNG', 0, 0, totalWmm, totalHmm);
+      pdf.save(safeName(sideKey)+'.pdf');
+    } else {
+      const link = document.createElement('a');
+      link.download = safeName(sideKey)+'.png';
+      link.href = card.toDataURL('image/png',1.0);
+      link.click();
+    }
+  }
+  document.getElementById('exportFrontBtn').addEventListener('click', ()=> exportCard('front'));
+  document.getElementById('exportBackBtn').addEventListener('click', ()=> exportCard('back'));
+
+  document.getElementById('exportSheetBtn').addEventListener('click', ()=>{
+    if(!sides.front.img){ alert('Please upload a front design first.'); return; }
+    renderSheetLayout();
+    const fmt = document.getElementById('exportFormat').value;
+    const orientation = g.sheet.wMm > g.sheet.hMm ? 'l':'p';
+    if(fmt==='pdf'){
+      if(!window.jspdf){ alert('PDF library failed to load — check your internet connection.'); return; }
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({orientation, unit:'mm', format:[g.sheet.wMm, g.sheet.hMm]});
+      pdf.addImage(lastSheetCanvases.front.toDataURL('image/png'), 'PNG', 0, 0, g.sheet.wMm, g.sheet.hMm);
+      if(lastSheetCanvases.back){
+        pdf.addPage([g.sheet.wMm, g.sheet.hMm], orientation);
+        pdf.addImage(lastSheetCanvases.back.toDataURL('image/png'), 'PNG', 0, 0, g.sheet.wMm, g.sheet.hMm);
+      }
+      pdf.save(safeName('sheet')+'.pdf');
+    } else {
+      const a1 = document.createElement('a'); a1.download = safeName('sheet_front')+'.png'; a1.href = lastSheetCanvases.front.toDataURL('image/png',1.0); a1.click();
+      if(lastSheetCanvases.back){
+        setTimeout(()=>{ const a2=document.createElement('a'); a2.download=safeName('sheet_back')+'.png'; a2.href=lastSheetCanvases.back.toDataURL('image/png',1.0); a2.click(); }, 300);
+      }
+    }
+  });
+
+  function printCanvas(canvas, label){
+    if(!canvas){ alert('Nothing to print yet.'); return; }
+    const dataUrl = canvas.toDataURL('image/png');
+    const w = window.open('', '_blank');
+    if(!w){ alert('Please allow pop-ups to print directly, or use Download instead.'); return; }
+    w.document.write(
+      '<html><head><title>Print — '+label+'</title><style>'+
+      '@page{ size:'+g.sheet.wMm+'mm '+g.sheet.hMm+'mm; margin:0; }'+
+      'html,body{margin:0;padding:0;}'+
+      'img{width:'+g.sheet.wMm+'mm;height:'+g.sheet.hMm+'mm;display:block;}'+
+      '</style></head><body>'+
+      '<img src="'+dataUrl+'" onload="setTimeout(function(){window.print();},300);">'+
+      '</body></html>'
+    );
+    w.document.close();
+  }
+  document.getElementById('printFrontSheetBtn').addEventListener('click', ()=>{ renderSheetLayout(); printCanvas(lastSheetCanvases.front, 'Front Sheet'); });
+  printBackSheetBtn.addEventListener('click', ()=>{ renderSheetLayout(); printCanvas(lastSheetCanvases.back, 'Back Sheet'); });
+
+  // ---------- Init ----------
+  initSideFresh('front'); initSideFresh('back');
+  renderActiveCropUI();
+  updateHeader();
+  refreshAll();
+
+})();
+</script>
+</body>
+</html>

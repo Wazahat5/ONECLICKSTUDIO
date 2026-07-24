@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo &amp; ID Editor — One Click Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+
+<style>
+  :root{
+    --bg: #1c1a17;
+    --panel: #24211d;
+    --panel-2: #2c2822;
+    --line: #3a352d;
+    --amber: #e8a33d;
+    --amber-dim: #a97a30;
+    --cyan: #5fb8b0;
+    --text: #f2ede4;
+    --text-dim: #a89f91;
+    --danger: #d96a5a;
+    --radius: 4px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 0%, rgba(232,163,61,0.06), transparent 40%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  ::selection{background:var(--amber);color:#1c1a17;}
+ 
+  /* --- Splash Screen --- */
+  #splash {
+    position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+  }
+  #splash.hidden { opacity: 0; visibility: hidden; }
+  .splash-mark {
+    font-family: 'Oswald', sans-serif; font-size: 42px; font-weight: 700;
+    color: var(--text); letter-spacing: 0.1em; text-transform: uppercase;
+    animation: pulse 1.5s infinite alternate;
+  }
+  .splash-mark span { color: var(--amber); }
+  .splash-creator {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+    color: var(--amber-dim); margin-top: 12px; letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  @keyframes pulse {
+    from { transform: scale(0.98); opacity: 0.8; }
+    to { transform: scale(1.02); opacity: 1; text-shadow: 0 0 20px rgba(232,163,61,0.2); }
+  }
+
+  .bracket{ position:relative; border:1px solid var(--line); background:var(--panel); border-radius: var(--radius); }
+  .bracket .bl,.bracket .br,.bracket .tl,.bracket .tr{
+    content:""; position:absolute; width:10px;height:10px;
+    border-color:var(--amber); border-style:solid; opacity:.85;
+  }
+  .bracket .tl{ top:-1px; left:-1px; border-width:2px 0 0 2px; border-top-left-radius: var(--radius); }
+  .bracket .tr{ top:-1px; right:-1px; border-width:2px 2px 0 0; border-top-right-radius: var(--radius); }
+  .bracket .bl{ bottom:-1px; left:-1px; border-width:0 0 2px 2px; border-bottom-left-radius: var(--radius); }
+  .bracket .br{ bottom:-1px; right:-1px; border-width:0 2px 2px 0; border-bottom-right-radius: var(--radius); }
+ 
+  header{
+    padding:28px 5vw 20px; display:flex; justify-content:space-between;
+    align-items:flex-end; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--line);
+    background: rgba(28, 26, 23, 0.8); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 100;
+  }
+  .brand{display:flex;flex-direction:column;gap:4px;}
+  .brand .mark{ font-family:'Oswald',sans-serif; font-weight:700; letter-spacing:.06em; font-size:26px; text-transform:uppercase; color:var(--text); }
+  .brand .mark span{color:var(--amber);}
+  .brand .tag{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); letter-spacing:.08em; text-transform:uppercase; }
+  .brand .creator{ font-family:'Oswald',sans-serif; font-size:13px; color:var(--amber); letter-spacing:.05em; text-transform:uppercase; margin-top:2px; }
+  
+  .roll-counter{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); letter-spacing:.05em; display:flex; gap:14px; }
+  .roll-counter b{color:var(--amber);}
+ 
+  main{ max-width:1180px; margin:0 auto; padding:34px 5vw 80px; display:flex; flex-direction:column; gap:30px; }
+ 
+  .step{ display:grid; grid-template-columns:56px 1fr; gap:18px; transition: transform 0.2s ease; }
+  .step-num{ font-family:'Oswald',sans-serif; font-size:34px; font-weight:600; color:var(--line); line-height:1; padding-top:2px; transition: color 0.3s; }
+  .step:hover .step-num { color: var(--amber-dim); }
+  .step.active .step-num{color:var(--amber);}
+  .step-body{ padding:22px 22px 26px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+  .step-title{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em; font-size:15px; font-weight:600; margin:0 0 4px; color:var(--text); }
+  .step-sub{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); margin:0 0 18px; }
+ 
+  .mini-label{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.06em;
+    font-size:11.5px; color:var(--amber); margin:0 0 8px;
+  }
+ 
+  .dropzone{
+    border:1px dashed var(--line); border-radius:var(--radius); padding:26px 20px;
+    text-align:center; cursor:pointer; transition:all .2s ease; background:var(--panel-2);
+  }
+  .dropzone:hover, .dropzone.drag{ border-color:var(--amber); background:#2f2a22; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .dropzone p{ margin:6px 0 0; color:var(--text-dim); font-size:13px;}
+  .dropzone .icon{font-size:24px;}
+  input[type=file]{display:none;}
+ 
+  .thumb-row{display:flex;align-items:center;gap:16px;margin-top:14px; padding: 12px; background: var(--panel-2); border-radius: var(--radius); border: 1px solid var(--line);}
+  .thumb-row img{ width:64px;height:64px;object-fit:cover; border:1px solid var(--line); border-radius: 2px; }
+  .thumb-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);}
+  .thumb-meta b{color:var(--text);}
+  .link-btn{ background:none;border:none;color:var(--cyan); font-family:'IBM Plex Mono',monospace;font-size:11px; cursor:pointer;text-decoration:underline;padding:0; transition: color 0.2s; }
+  .link-btn:hover { color: #fff; }
+ 
+  .upload-block{ margin-bottom:20px; }
+  .upload-block:last-child{ margin-bottom:0; }
+ 
+  label.field-label{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:10px;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px;
+  }
+  select, input[type=text], input[type=number], input[type=password]{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-family:'Inter',sans-serif; font-size:13px; padding:9px 10px; border-radius:var(--radius); outline:none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input[type=color]{
+    width:100%; height:38px; padding:2px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer;
+  }
+  select:focus, input:focus{ border-color:var(--amber); box-shadow: 0 0 0 2px rgba(232, 163, 61, 0.1); }
+  
+  /* Editable Slider Values CSS */
+  .slider-val-input {
+    width: 48px !important;
+    padding: 2px 4px !important;
+    text-align: center;
+    background: transparent !important;
+    color: var(--amber) !important;
+    border: 1px solid transparent !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 10px !important;
+    font-weight: 600;
+  }
+  .slider-val-input:hover, .slider-val-input:focus {
+    border-color: var(--line) !important;
+    background: var(--panel-2) !important;
+  }
+  .slider-val-input::-webkit-outer-spin-button, .slider-val-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .slider-val-input[type=number] { -moz-appearance: textfield; }
+  .val-wrap { display: flex; align-items: center; gap: 2px; color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; font-size: 10px;}
+
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:140px;}
+  .row.tight > div{min-width:100px;}
+ 
+  .preset-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:16px; }
+  .preset-card{ border:1px solid var(--line); background:var(--panel-2); padding:12px 12px 10px; cursor:pointer; transition:all .15s; border-radius: var(--radius); }
+  .preset-card:hover{border-color:var(--amber-dim); transform: translateY(-1px);}
+  .preset-card.sel{border-color:var(--amber);background:#332b1c; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
+  .preset-card .pname{font-size:12.5px;font-weight:600;color:var(--text);}
+  .preset-card .pdim{ font-family:'IBM Plex Mono',monospace; font-size:10.5px;color:var(--amber);margin-top:4px; }
+  .preset-card .pcat{ font-family:'IBM Plex Mono',monospace; font-size:9px;color:var(--text-dim); text-transform:uppercase;letter-spacing:.05em;margin-top:2px; }
+  .preset-card .ptwo{ font-family:'IBM Plex Mono',monospace; font-size:9px;color:var(--cyan); margin-top:3px; }
+ 
+  .btn{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em; font-size:12.5px; font-weight:600;
+    padding:11px 20px; border:1px solid var(--amber); background:var(--amber); color:#1c1a17;
+    cursor:pointer; border-radius:var(--radius); transition:all .15s;
+  }
+  .btn:hover:not(:disabled){opacity:.9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(232, 163, 61, 0.2);}
+  .btn:active:not(:disabled){transform:translateY(0) scale(.98);}
+  .btn.ghost{ background:transparent;color:var(--amber); box-shadow: none;}
+  .btn.ghost:hover:not(:disabled){ background: rgba(232, 163, 61, 0.1); }
+  .btn.small{padding:7px 14px;font-size:11px;}
+  .btn:disabled{opacity:.5;cursor:wait;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+ 
+  .crop-wrap{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+  .crop-box-outer{
+    position:relative; overflow:hidden; background:var(--bg); border:1px solid var(--line);
+    cursor:grab; touch-action:none; border-radius: var(--radius); box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  }
+  .crop-box-outer:active{cursor:grabbing;}
+  
+  /* Dynamic Background Color layer for Crop Box */
+  #cropBgColorLayer { position: absolute; inset: 0; background: #ffffff; z-index: 0; }
+  #cropVignetteLayer { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: transparent; }
+
+  .crop-rotate-wrap{ position:absolute; top:0; left:0; width:100%; height:100%; z-index: 1; }
+  .crop-rotate-wrap img{
+    position:absolute; top:0;left:0; transform-origin:0 0;
+    user-select:none; -webkit-user-drag:none; pointer-events:none;
+  }
+  .crop-controls{min-width:230px;display:flex;flex-direction:column;gap:16px;}
+  input[type=range]{ width:100%;accent-color:var(--amber); cursor: pointer; }
+  .slider-row{display:flex;justify-content:space-between; align-items:center; font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:4px;}
+  .hint{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-dim);line-height:1.6; background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius);}
+  .subhead{
+    font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.05em;
+    font-size:11.5px;color:var(--text-dim);margin:6px 0 2px;border-top:1px dashed var(--line);padding-top:12px;
+  }
+
+  .panel{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-2);
+    margin-bottom:10px; overflow:hidden;
+  }
+  .panel[open]{ padding-bottom:14px; }
+  .panel summary{
+    font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.05em;
+    font-size:11.5px; color:var(--amber); padding:11px 14px; cursor:pointer;
+    list-style:none; display:flex; align-items:center; justify-content:space-between;
+    user-select:none;
+  }
+  .panel summary::-webkit-details-marker{ display:none; }
+  .panel summary::after{
+    content:"+"; font-size:14px; color:var(--text-dim); transition:transform .15s;
+  }
+  .panel[open] summary::after{ content:"–"; }
+  .panel-body{ padding:2px 14px 0; display:flex; flex-direction:column; gap:14px; }
+  .checkbox-pair{display:flex; gap:16px; flex-wrap:wrap;}
+ 
+  .swatches{display:flex;gap:8px;margin-top:4px;}
+  .swatch{ width:26px;height:26px;border-radius:50%; cursor:pointer;border:2px solid transparent; transition: transform 0.2s; }
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.sel{border-color:#fff; transform: scale(1.15); box-shadow: 0 0 8px rgba(255,255,255,0.4); }
+ 
+  .sheet-wrap{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;}
+  .sheet-controls{min-width:240px;display:flex;flex-direction:column;gap:16px;flex:1;}
+  .sheet-preview-holder{
+    flex:2; min-width:280px;
+    background:repeating-conic-gradient(#2a2621 0% 25%, #241f1a 0% 50%) 50% / 14px 14px;
+    border:1px solid var(--line); display:flex;align-items:center;justify-content:center;
+    padding:16px; overflow:auto; border-radius: var(--radius);
+  }
+  #sheetCanvas{ max-width:100%; height:auto; background:#fff; box-shadow:0 8px 32px rgba(0,0,0,.6); transition: transform 0.3s ease;}
+  .check-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-dim); cursor: pointer;}
+  .check-row input{accent-color:var(--amber); cursor: pointer; width: 16px; height: 16px;}
+ 
+  .stat-line{
+    font-family:'IBM Plex Mono',monospace; font-size:11px;color:var(--text-dim);
+    display:flex;justify-content:space-between; border-top:1px dashed var(--line); padding-top:10px;margin-top:4px;
+  }
+  .stat-line b{color:var(--amber);}
+ 
+  footer{
+    text-align:center; padding:26px; font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px; color:var(--text-dim); border-top:1px solid var(--line);
+    margin-top: 40px;
+  }
+ 
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(10,9,7,.85); backdrop-filter: blur(4px);
+    display:flex;align-items:center;justify-content:center;z-index:999; padding:20px;
+  }
+  .modal-box{ max-width:380px;width:100%;padding:24px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+  .modal-box h3{ font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:15px;margin:0 0 10px; color: var(--amber); }
+  .modal-box p{ font-size:12.5px;color:var(--text-dim);line-height:1.5;margin:0 0 14px; }
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
+  #pwError{font-size:11.5px;color:var(--danger);margin-top:8px;display:none;}
+ 
+  @media (max-width:640px){
+    .step{grid-template-columns:34px 1fr;}
+    .step-num{font-size:24px;}
+  }
+
+  .topnav{
+    display:flex; gap:4px; padding:10px 5vw; background:var(--panel);
+    border-bottom:1px solid var(--line); position:sticky; top:0; z-index:99;
+    overflow-x:auto;
+  }
+  .topnav a{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--text-dim); text-decoration:none;
+    padding:8px 14px; border-radius:var(--radius); white-space:nowrap;
+    transition:all .15s; border:1px solid transparent;
+  }
+  .topnav a:hover{ color:var(--text); background:var(--panel-2); }
+  .topnav a.active{ color:var(--amber); border-color:var(--amber-dim); background:var(--panel-2); }
+
+  .handoff-box{
+    margin-top:14px; padding:14px; border:1px dashed var(--cyan); border-radius:var(--radius);
+    background:rgba(95,184,176,0.06);
+  }
+  .handoff-box p{ margin:0 0 10px; font-size:12px; color:var(--text-dim); line-height:1.5; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute;pointer-events:none;">
+  <filter id="colorMatrixFilter" color-interpolation-filters="sRGB">
+    <feColorMatrix id="colorMatrixNode" type="matrix"
+      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+  </filter>
+</svg>
+
+<div id="splash">
+  <div class="splash-mark">ONE CLICK<span>·</span>STUDIO</div>
+  <div class="splash-creator">BY WAZAHAT KHAN</div>
+</div>
+ 
+<header>
+  <div class="brand">
+    <div class="mark">ONE CLICK<span>·</span>STUDIO</div>
+    <div class="tag">Passport Photos · ID &amp; Lamination Cards · Print Sheets</div>
+    <div class="creator">THIS MADE BY WAZAHAT KHAN</div>
+  </div>
+  <div class="roll-counter">
+    <span>FORMAT <b id="hdrFormat">—</b></span>
+    <span>SIZE <b id="hdrSize">—</b></span>
+    <span>DPI <b id="hdrDpi">300</b></span>
+  </div>
+</header>
+
+<nav class="topnav">
+  <a href="index.html">Home</a>
+  <a href="editor.html" class="active">Photo &amp; ID Editor</a>
+  <a href="pvc-print.html">PVC Card Printing Studio</a>
+</nav>
+ 
+<main>
+ 
+  <section class="step active">
+    <div class="step-num">01</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Upload Photo or Document</h2>
+      <p class="step-sub" id="uploadHint">jpg · png · pdf — Aadhaar / PAN e-copies supported, even password-protected ones</p>
+ 
+      <div class="upload-block" id="frontUploadBlock">
+        <div class="mini-label" id="frontLabel" style="display:none;">Front Side</div>
+        <div class="dropzone" id="dropzone">
+          <div class="icon">📷</div>
+          <div style="font-size:13px;color:var(--text);font-weight:500;margin-top:4px;">Click to choose a file, or drag one here</div>
+          <p>Photo, or a PDF like e-Aadhaar / e-PAN — we'll ask for the password if it needs one</p>
+          <input type="file" id="fileInput" accept="image/*,application/pdf">
+        </div>
+        <div class="thumb-row" id="thumbRow" style="display:none;">
+          <img id="thumbImg" alt="uploaded preview">
+          <div class="thumb-meta">
+            <div><b id="thumbName">—</b></div>
+            <div id="thumbDims">—</div>
+            <button class="link-btn" id="changePhotoBtn">choose a different file</button>
+          </div>
+        </div>
+      </div>
+ 
+      <div class="upload-block" id="backUploadBlock" style="display:none;">
+        <div class="mini-label">Back Side</div>
+        <div class="dropzone" id="dropzoneBack">
+          <div class="icon">📷</div>
+          <div style="font-size:13px;color:var(--text);font-weight:500;margin-top:4px;">Click to choose the back-side file, or drag one here</div>
+          <p>This document needs both sides — upload the back here</p>
+          <input type="file" id="fileInputBack" accept="image/*,application/pdf">
+        </div>
+        <div class="thumb-row" id="thumbRowBack" style="display:none;">
+          <img id="thumbImgBack" alt="uploaded preview back">
+          <div class="thumb-meta">
+            <div><b id="thumbNameBack">—</b></div>
+            <div id="thumbDimsBack">—</div>
+            <button class="link-btn" id="changePhotoBtnBack">choose a different file</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+ 
+  <section class="step">
+    <div class="step-num">02</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Choose Document Format</h2>
+      <p class="step-sub">pick a preset, or set your own size in millimetres — every preset stays fully editable. Presets marked <span style="color:var(--cyan);">2-SIDED</span> will ask for a back-side upload too.</p>
+ 
+      <div class="preset-grid" id="presetGrid"></div>
+ 
+      <div class="row" style="margin-top:20px;">
+        <div>
+          <label class="field-label">Width (mm)</label>
+          <input type="number" id="widthMm" step="0.1" min="5" max="400">
+        </div>
+        <div>
+          <label class="field-label">Height (mm)</label>
+          <input type="number" id="heightMm" step="0.1" min="5" max="400">
+        </div>
+        <div>
+          <label class="field-label">Selected preset</label>
+          <input type="text" id="presetName" value="Passport Photo" disabled>
+        </div>
+      </div>
+    </div>
+  </section>
+ 
+  <section class="step">
+    <div class="step-num">03</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Position, Crop &amp; Edit</h2>
+      <p class="step-sub">drag to frame it, then fine-tune — if auto crop isn't quite right, adjust everything by hand</p>
+ 
+      <div class="btn-row" id="sideTabs" style="display:none;margin-bottom:16px;">
+        <button class="btn small" id="tabFrontBtn">Front side</button>
+        <button class="btn ghost small" id="tabBackBtn">Back side</button>
+      </div>
+ 
+      <div class="crop-wrap">
+        <div class="crop-box-outer" id="cropOuter">
+          <div id="cropBgColorLayer"></div>
+          <div class="crop-rotate-wrap" id="cropRotateWrap">
+            <img id="cropImg" alt="">
+          </div>
+          <div id="cropVignetteLayer"></div>
+        </div>
+        <div class="crop-controls">
+
+          <details class="panel" open>
+            <summary>Enhance Tools</summary>
+            <div class="panel-body">
+              <div class="btn-row">
+                <button class="btn small" id="autoOneClickBtn" style="flex:1; background:var(--amber); color:#1c1a17; font-weight:700; border-color:var(--amber);" title="Centre-crops and runs Smart Enhance + Text Enhance in one click">Auto Enhance (One Click)</button>
+              </div>
+              <div class="btn-row" style="margin-top:8px;">
+                <button class="btn small" id="autoEnhanceBtn" style="flex:1;">Smart Enhance</button>
+                <button class="btn ghost small" id="textEnhanceAutoBtn" style="flex:1; border-color:var(--cyan); color:var(--cyan);" title="Runs unsharp-mask text enhancement, tuned stronger for Aadhaar/PAN/DL/Voter ID document scans">Text Enhance (Auto)</button>
+              </div>
+              <div id="statusLine" style="display:none; margin-top:10px; padding:8px 10px; border-radius:var(--radius); border:1px solid var(--line); background:var(--panel-2); font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); white-space:pre-wrap;"></div>
+              <div>
+                <label class="field-label" style="display:flex; justify-content:space-between; align-items:center;">
+                  Photo Background Color
+                  <input type="color" id="photoBgColorPicker" value="#ffffff" style="width:30px; height:20px; padding:0; border:none; cursor:pointer;">
+                </label>
+                <p style="font-size:9.5px; color:var(--text-dim); margin:4px 0 0;">Applies a flat background colour behind a transparent photo.</p>
+              </div>
+              <p class="hint">100% code-based — no AI, no external models, no server upload, nothing downloaded from a CDN at runtime. Every effect below is plain JavaScript/canvas math running locally in your browser. Auto Enhance centre-crops and applies histogram-based Smart Enhance plus text sharpening in one click. Text Enhance runs a real unsharp-mask pass (blur + recover high-frequency edges) tuned for soft/blurry document scans.</p>
+            </div>
+          </details>
+
+          <details class="panel" open>
+            <summary>Position &amp; Transform</summary>
+            <div class="panel-body">
+              <div>
+                <div class="slider-row">
+                  <span>Zoom</span>
+                  <div class="val-wrap"><input type="number" id="zoomVal" class="slider-val-input" value="100" min="100" max="400">%</div>
+                </div>
+                <input type="range" id="zoomSlider" min="100" max="400" value="100">
+              </div>
+              <div class="btn-row">
+                <button class="btn ghost small" id="rotateLeftBtn">Rotate 90&deg; L</button>
+                <button class="btn ghost small" id="rotateRightBtn">Rotate 90&deg; R</button>
+                <button class="btn ghost small" id="flipBtn">Flip</button>
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Straighten</span>
+                  <div class="val-wrap"><input type="number" id="straightenVal" class="slider-val-input" value="0" min="-15" max="15" step="0.5">&deg;</div>
+                </div>
+                <input type="range" id="straightenSlider" min="-15" max="15" value="0" step="0.5">
+              </div>
+              <div class="btn-row">
+                <button class="btn ghost small" id="resetCropBtn">Reset position</button>
+                <button class="btn ghost small" id="resetAllBtn">Reset this side</button>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel">
+            <summary>Colour Adjustments</summary>
+            <div class="panel-body">
+              <div>
+                <div class="slider-row">
+                  <span>Brightness</span>
+                  <div class="val-wrap"><input type="number" id="brightVal" class="slider-val-input" value="100" min="50" max="150">%</div>
+                </div>
+                <input type="range" id="brightSlider" min="50" max="150" value="100">
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Contrast</span>
+                  <div class="val-wrap"><input type="number" id="contrastVal" class="slider-val-input" value="100" min="50" max="150">%</div>
+                </div>
+                <input type="range" id="contrastSlider" min="50" max="150" value="100">
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Saturation</span>
+                  <div class="val-wrap"><input type="number" id="satVal" class="slider-val-input" value="100" min="0" max="200">%</div>
+                </div>
+                <input type="range" id="satSlider" min="0" max="200" value="100">
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Temperature</span>
+                  <div class="val-wrap"><input type="number" id="tempVal" class="slider-val-input" value="0" min="-50" max="50"></div>
+                </div>
+                <input type="range" id="tempSlider" min="-50" max="50" value="0">
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Tint</span>
+                  <div class="val-wrap"><input type="number" id="tintVal" class="slider-val-input" value="0" min="-50" max="50"></div>
+                </div>
+                <input type="range" id="tintSlider" min="-50" max="50" value="0">
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Hue</span>
+                  <div class="val-wrap"><input type="number" id="hueVal" class="slider-val-input" value="0" min="-180" max="180">&deg;</div>
+                </div>
+                <input type="range" id="hueSlider" min="-180" max="180" value="0">
+              </div>
+              <div class="checkbox-pair">
+                <label class="check-row"><input type="checkbox" id="grayscaleChk"> Black &amp; White</label>
+                <label class="check-row"><input type="checkbox" id="invertChk"> Invert</label>
+              </div>
+            </div>
+          </details>
+
+          <details class="panel">
+            <summary>Effects</summary>
+            <div class="panel-body">
+              <div>
+                <div class="slider-row">
+                  <span>Sharpen</span>
+                  <div class="val-wrap"><input type="number" id="sharpenVal" class="slider-val-input" value="0" min="0" max="100"></div>
+                </div>
+                <input type="range" id="sharpenSlider" min="0" max="100" value="0">
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Text Enhance</span>
+                  <div class="val-wrap"><input type="number" id="textEnhanceVal" class="slider-val-input" value="0" min="0" max="100"></div>
+                </div>
+                <input type="range" id="textEnhanceSlider" min="0" max="100" value="0">
+              </div>
+              <div>
+                <div class="slider-row">
+                  <span>Vignette</span>
+                  <div class="val-wrap"><input type="number" id="vignetteVal" class="slider-val-input" value="0" min="0" max="100"></div>
+                </div>
+                <input type="range" id="vignetteSlider" min="0" max="100" value="0">
+              </div>
+              <p class="hint">Sharpen and Text Enhance are applied to the printed/exported photo (kept off the live preview so dragging stays smooth). Text Enhance is a real unsharp-mask pass (blurs, then adds back the recovered edge detail) &mdash; much stronger against actual blur than Sharpen alone; use it on scanned documents. Vignette previews live.</p>
+            </div>
+          </details>
+
+        </div>
+      </div>
+    </div>
+  </section>
+ 
+  <section class="step" id="cardDetailsStep" style="display:none;">
+    <div class="step-num">04</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Card Details <span style="color:var(--text-dim);font-weight:400;font-size:11px;">(optional — added to the front only)</span></h2>
+      <p class="step-sub">add a name strip to the bottom of the front card, like a staff / visitor ID</p>
+ 
+      <div class="row">
+        <div>
+          <label class="field-label">Name line</label>
+          <input type="text" id="cardName" placeholder="e.g. RAHUL SHARMA">
+        </div>
+        <div>
+          <label class="field-label">Sub line</label>
+          <input type="text" id="cardSub" placeholder="e.g. ID No. 04521 / Designation">
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <label class="field-label">Accent colour</label>
+        <div class="swatches" id="swatches"></div>
+      </div>
+    </div>
+  </section>
+ 
+  <section class="step">
+    <div class="step-num">05</div>
+    <div class="step-body bracket">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <h2 class="step-title">Arrange, Export &amp; Print</h2>
+      <p class="step-sub">for 2-sided documents, front and back are placed side by side automatically for each copy</p>
+ 
+      <div class="sheet-wrap">
+        <div class="sheet-controls">
+          <div>
+            <label class="field-label">Sheet size</label>
+            <select id="sheetSize">
+              <option value="4x6">4 x 6 in (102 x 152 mm)</option>
+              <option value="5x7">5 x 7 in (127 x 178 mm)</option>
+              <option value="a4">A4 (210 x 297 mm)</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </div>
+          <div class="row tight" id="customSheetRow" style="display:none;">
+            <div>
+              <label class="field-label">Sheet W (mm)</label>
+              <input type="number" id="sheetWmm" value="152">
+            </div>
+            <div>
+              <label class="field-label">Sheet H (mm)</label>
+              <input type="number" id="sheetHmm" value="102">
+            </div>
+          </div>
+ 
+          <div>
+            <label class="field-label">Copies on sheet</label>
+            <input type="number" id="copyCount" min="1" value="1">
+          </div>
+
+          <div class="subhead">Advanced Controls</div>
+          <div class="row tight">
+            <div>
+              <label class="field-label">Print DPI</label>
+              <select id="dpiSelect">
+                <option value="150">150 DPI (draft)</option>
+                <option value="300" selected>300 DPI (standard)</option>
+                <option value="600">600 DPI (high quality)</option>
+                <option value="1200">1200 DPI (max)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Corner Radius (mm)</label>
+              <input type="number" id="cornerRadiusMm" value="0" min="0" max="6" step="0.1">
+            </div>
+          </div>
+
+          <div class="subhead">Page Positioning</div>
+          <div class="row tight">
+            <div>
+              <label class="field-label">Margin Left (mm)</label>
+              <input type="number" id="marginLeftMm" value="4" min="0" step="1">
+            </div>
+            <div>
+              <label class="field-label">Margin Top (mm)</label>
+              <input type="number" id="marginTopMm" value="4" min="0" step="1">
+            </div>
+          </div>
+ 
+          <div class="check-row" style="margin-top: 10px;"><input type="checkbox" id="strokeOn"> <label for="strokeOn">Add border / stroke around each photo</label></div>
+          <div class="row tight" id="strokeOptions" style="display:none;">
+            <div>
+              <label class="field-label">Width (mm)</label>
+              <input type="number" id="strokeWidthMm" value="2" step="0.5" min="0.5" max="10">
+            </div>
+            <div>
+              <label class="field-label">Colour</label>
+              <input type="color" id="strokeColor" value="#ffffff">
+            </div>
+          </div>
+          <div class="check-row"><input type="checkbox" id="addGuides" checked> <label for="addGuides">Show cutting guide lines</label></div>
+ 
+          <div class="stat-line"><span>Max copies that fit</span><b id="maxCopies">—</b></div>
+          <div class="stat-line"><span>Output resolution</span><b id="outRes">—</b></div>
+ 
+          <div>
+            <label class="field-label">Export format</label>
+            <select id="exportFormat">
+              <option value="png">PNG — image</option>
+              <option value="jpg">JPG — image</option>
+              <option value="pdf">PDF — document (for Aadhaar/PAN uploads etc.)</option>
+            </select>
+          </div>
+ 
+          <div class="btn-row">
+            <button class="btn" id="downloadBtn">Download</button>
+            <button class="btn ghost" id="printBtn">Print directly</button>
+          </div>
+
+          <div class="handoff-box">
+            <p>Making an ID / Aadhaar / PAN / DL lamination card? Send your finished front &amp; back straight to the <b style="color:var(--cyan)">PVC Card Printing Studio</b> for real card-size (CR80) layout, bleed, rounded corners, crop marks and duplex sheet printing.</p>
+            <button class="btn ghost small" id="sendToPvcBtn" style="border-color:var(--cyan);color:var(--cyan);">Send to PVC Card Printing Studio →</button>
+          </div>
+        </div>
+ 
+        <div class="sheet-preview-holder">
+          <canvas id="sheetCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+ 
+</main>
+ 
+<footer>
+  ONE CLICK STUDIO — runs entirely on this device. Nothing you upload leaves your browser, including PDF passwords. No AI, no cloud — 100% coded locally.<br>
+  <a href="index.html" style="color:var(--amber);text-decoration:none;">Home</a> &nbsp;·&nbsp;
+  <a href="pvc-print.html" style="color:var(--amber);text-decoration:none;">PVC Card Printing Studio</a>
+</footer>
+ 
+<div class="modal-overlay" id="pwModal" style="display:none;">
+  <div class="modal-box bracket">
+    <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+    <h3>Password Protected File</h3>
+    <p>This PDF (e.g. e-Aadhaar / e-PAN) is locked. Enter its password to open it — everything happens locally in your browser, nothing is sent anywhere.</p>
+    <input type="password" id="pwInput" placeholder="Enter password">
+    <div id="pwError">Incorrect password. Please try again.</div>
+    <div class="modal-actions">
+      <button class="btn ghost small" id="pwCancel">Cancel</button>
+      <button class="btn small" id="pwSubmit">Unlock</button>
+    </div>
+  </div>
+</div>
+ 
+<script>
+(function(){
+  "use strict";
+
+  // Splash Screen Logic
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.getElementById('splash').classList.add('hidden');
+    }, 1500);
+  });
+ 
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+ 
+  let DPI = 300;
+  const mmToPx = mm => Math.round(mm * DPI / 25.4);
+  
+  const GUTTER_MM = 2, INNER_GUTTER_MM = 1;
+ 
+  const PRESETS = [
+    {name:"Passport Photo",      cat:"Photo",      w:30,   h:40,   twoSided:false},
+    {name:"Stamp Size Photo",    cat:"Photo",      w:20,   h:25,   twoSided:false},
+    {name:"PAN Card Photo",      cat:"Photo",      w:25,   h:35,   twoSided:false},
+    {name:"Voter ID Photo",      cat:"Photo",      w:25,   h:35,   twoSided:false},
+    {name:"US Passport Photo",   cat:"Photo",      w:51,   h:51,   twoSided:false},
+    {name:"UK/EU Passport Photo",cat:"Photo",      w:35,   h:45,   twoSided:false},
+    {name:"Aadhar Lamination",   cat:"Lamination", w:85.6, h:54,   twoSided:true},
+    {name:"PAN Card Lamination", cat:"Lamination", w:85.6, h:54,   twoSided:true},
+    {name:"Driving Licence Lam.",cat:"Lamination", w:85.6, h:54,   twoSided:true},
+    {name:"Voter ID Lamination", cat:"Lamination", w:85.6, h:54,   twoSided:true},
+    {name:"Visiting Card",       cat:"Document",   w:89,   h:51,   twoSided:false},
+    {name:"Postcard",            cat:"Document",   w:152,  h:102,  twoSided:false},
+    {name:"Custom",              cat:"Custom",     w:30,   h:40,   twoSided:false},
+  ];
+ 
+  const SWATCH_COLORS = ["#e8a33d","#5fb8b0","#d96a5a","#7a8fd9","#2c2822","#ffffff"];
+ 
+  let g = {
+    preset: PRESETS[0], wMm: PRESETS[0].w, hMm: PRESETS[0].h,
+    cardName:"", cardSub:"", accent: SWATCH_COLORS[0],
+    sheetKind:"4x6", sheetWmm:101.6, sheetHmm:152.4, copies:1,
+    strokeOn:false, strokeWidthMm:2, strokeColor:"#ffffff",
+    addGuides:true, marginLeft:4, marginTop:4, cornerRadiusMm:0,
+  };
+ 
+  function newSide(){
+    return {
+      img:null, originalSrc:null, fileName:"",
+      zoom:1, offsetX:0, offsetY:0, baseScale:1, boxW:0, boxH:0,
+      fineRotate:0, brightness:100, contrast:100, saturate:100,
+      bgColor: '#ffffff',
+      hue:0, temperature:0, tint:0, grayscale:false, invert:false,
+      vignette:0, sharpen:0, textEnhance:0
+    };
+  }
+  let sides = { front:newSide(), back:newSide() };
+  let activeSide = 'front';
+
+  // Updates the shared SVG feColorMatrix element so it reflects this side's
+  // temperature/tint values right before it's referenced by a filter string.
+  const colorMatrixNode = document.getElementById('colorMatrixNode');
+  function updateColorMatrix(s){
+    if(!colorMatrixNode) return;
+    const rMul = (1 + (s.temperature||0)*0.004).toFixed(3);
+    const bMul = (1 - (s.temperature||0)*0.004).toFixed(3);
+    const gMul = (1 + (s.tint||0)*0.004).toFixed(3);
+    colorMatrixNode.setAttribute('values',
+      rMul+' 0 0 0 0  0 '+gMul+' 0 0 0  0 0 '+bMul+' 0 0  0 0 0 1 0');
+  }
+
+  function cssFilterString(s){
+    updateColorMatrix(s);
+    let f = 'brightness('+s.brightness+'%) contrast('+s.contrast+'%) saturate('+s.saturate+'%)';
+    if(s.hue) f += ' hue-rotate('+s.hue+'deg)';
+    if(s.grayscale) f += ' grayscale(100%)';
+    if(s.invert) f += ' invert(100%)';
+    if(s.temperature || s.tint) f += ' url(#colorMatrixFilter)';
+    return f;
+  }
+
+  // Simple 3x3 unsharp-mask convolution — a real pixel pass, kept cheap by
+  // only running when the sharpen amount is actually above zero.
+  function applySharpen(canvas, amount){
+    if(!amount) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    if(w*h > 9000000) return; // safety cap for very large sheets
+    const imgData = ctx.getImageData(0,0,w,h);
+    const src = imgData.data;
+    const out = new Uint8ClampedArray(src.length);
+    const amt = Math.min(1, amount/100);
+    const k = [0,-1,0, -1,5,-1, 0,-1,0];
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const idx = (y*w+x)*4;
+        for(let c=0;c<3;c++){
+          let sum=0, ki=0;
+          for(let dy=-1;dy<=1;dy++){
+            const yy = Math.min(h-1, Math.max(0, y+dy));
+            for(let dx=-1;dx<=1;dx++){
+              const xx = Math.min(w-1, Math.max(0, x+dx));
+              sum += src[(yy*w+xx)*4+c]*k[ki++];
+            }
+          }
+          out[idx+c] = src[idx+c]*(1-amt) + sum*amt;
+        }
+        out[idx+3] = src[idx+3];
+      }
+    }
+    imgData.data.set(out);
+    ctx.putImageData(imgData,0,0);
+  }
+
+  // Separable box blur, run 3 passes (a standard, well-known technique that
+  // closely approximates a true Gaussian blur while staying fast in plain
+  // JS). Edges are clamped. Operates on a flat RGBA Float32Array copy so
+  // repeated passes don't accumulate rounding error.
+  function boxBlurPass(src, w, h, radius){
+    const r = Math.max(1, Math.round(radius));
+    const size = r*2+1;
+    const mid = new Float32Array(src.length);
+    for(let y=0; y<h; y++){
+      const rowOff = y*w*4;
+      for(let c=0;c<4;c++){
+        let sum = 0;
+        for(let x=-r;x<=r;x++){
+          const xi = x<0?0:(x>=w?w-1:x);
+          sum += src[rowOff + xi*4 + c];
+        }
+        for(let x=0;x<w;x++){
+          mid[rowOff + x*4 + c] = sum/size;
+          const xOut = x-r, xIn = x+r+1;
+          const xOutC = xOut<0?0:(xOut>=w?w-1:xOut);
+          const xInC = xIn<0?0:(xIn>=w?w-1:xIn);
+          sum += src[rowOff+xInC*4+c] - src[rowOff+xOutC*4+c];
+        }
+      }
+    }
+    const out = new Float32Array(src.length);
+    for(let x=0; x<w; x++){
+      for(let c=0;c<4;c++){
+        let sum = 0;
+        for(let y=-r;y<=r;y++){
+          const yi = y<0?0:(y>=h?h-1:y);
+          sum += mid[(yi*w+x)*4+c];
+        }
+        for(let y=0;y<h;y++){
+          out[(y*w+x)*4+c] = sum/size;
+          const yOut = y-r, yIn = y+r+1;
+          const yOutC = yOut<0?0:(yOut>=h?h-1:yOut);
+          const yInC = yIn<0?0:(yIn>=h?h-1:yIn);
+          sum += mid[(yInC*w+x)*4+c] - mid[(yOutC*w+x)*4+c];
+        }
+      }
+    }
+    return out;
+  }
+
+  // Real unsharp-mask text enhancement: blur a copy of the image at a
+  // meaningful radius (several px, unlike the 1px Sharpen kernel above),
+  // then add back (original - blurred) — the recovered high-frequency
+  // detail — onto the original. This is the standard professional-editor
+  // technique for pulling soft/blurry text back into focus, and is far
+  // more effective on scanned document text than a tiny fixed kernel.
+  function applyTextEnhance(canvas, amount){
+    if(!amount) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    if(w*h > 9000000) return; // safety cap for very large sheets (was silently skipping much sooner)
+    const imgData = ctx.getImageData(0,0,w,h);
+    const src = imgData.data;
+    const amt = Math.min(1, amount/100);
+    // Blur radius scales with image size so the effect looks consistent on
+    // a small phone photo vs. a big rasterised Aadhaar/PAN PDF.
+    const radius = Math.max(1, Math.round(Math.min(w,h) * 0.0055 * (0.6+amt)));
+    let blurred = new Float32Array(src.length);
+    blurred.set(src);
+    blurred = boxBlurPass(blurred, w, h, radius);
+    blurred = boxBlurPass(blurred, w, h, radius);
+    blurred = boxBlurPass(blurred, w, h, radius);
+
+    // Cap the strength AND clamp the recovered edge-detail (orig-blur)
+    // before amplifying it. Without this clamp, high-contrast text edges
+    // (black text on a white ID card) overshoot past 0/255, hard-clip, and
+    // produce the broken/"torn" halo look around letters — worse the
+    // higher-res the source is, since more edge pixels get pushed past
+    // the clip point. Clamping the delta keeps the boost proportional
+    // instead of blowing out.
+    const strength = 0.4 + amt*0.9; // was up to 2.0 — that's what caused the tearing
+    const maxDelta = 70;
+    const out = new Uint8ClampedArray(src.length);
+    for(let i=0;i<src.length;i+=4){
+      for(let c=0;c<3;c++){
+        const orig = src[i+c], blur = blurred[i+c];
+        let delta = orig - blur;
+        delta = Math.max(-maxDelta, Math.min(maxDelta, delta));
+        out[i+c] = orig + delta*strength;
+      }
+      out[i+3] = src[i+3];
+    }
+    imgData.data.set(out);
+    ctx.putImageData(imgData,0,0);
+  }
+
+  function applyVignette(canvas, amount){
+    if(!amount) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const grad = ctx.createRadialGradient(w/2,h/2, Math.min(w,h)*0.28, w/2,h/2, Math.max(w,h)*0.72);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,'+((amount/100)*0.85).toFixed(2)+')');
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,w,h);
+    ctx.restore();
+  }
+ 
+  const pwModal = document.getElementById('pwModal');
+  const pwInput = document.getElementById('pwInput');
+  const pwError = document.getElementById('pwError');
+  const pwSubmit = document.getElementById('pwSubmit');
+  const pwCancel = document.getElementById('pwCancel');
+  let pwResolve=null, pwReject=null;
+ 
+  function promptForPassword(showError){
+    pwError.style.display = showError ? 'block':'none';
+    pwInput.value='';
+    pwModal.style.display='flex';
+    setTimeout(()=>pwInput.focus(),50);
+    return new Promise((resolve,reject)=>{ pwResolve=resolve; pwReject=reject; });
+  }
+  pwSubmit.addEventListener('click', ()=>{
+    pwModal.style.display='none';
+    if(pwResolve) pwResolve(pwInput.value);
+  });
+  pwInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ pwSubmit.click(); }});
+  pwCancel.addEventListener('click', ()=>{
+    pwModal.style.display='none';
+    if(pwReject) pwReject(new Error('cancelled'));
+  });
+ 
+  function wireUploader(dropzoneEl, fileInputEl, thumbRowEl, thumbImgEl, thumbNameEl, thumbDimsEl, changeBtnEl, sideKey){
+    dropzoneEl.addEventListener('click', ()=> fileInputEl.click());
+    dropzoneEl.addEventListener('dragover', e=>{ e.preventDefault(); dropzoneEl.classList.add('drag'); });
+    dropzoneEl.addEventListener('dragleave', ()=> dropzoneEl.classList.remove('drag'));
+    dropzoneEl.addEventListener('drop', e=>{
+      e.preventDefault(); dropzoneEl.classList.remove('drag');
+      if(e.dataTransfer.files && e.dataTransfer.files[0]) routeFile(e.dataTransfer.files[0], sideKey);
+    });
+    fileInputEl.addEventListener('change', e=>{
+      if(e.target.files && e.target.files[0]) routeFile(e.target.files[0], sideKey);
+    });
+    changeBtnEl.addEventListener('click', ()=> fileInputEl.click());
+ 
+    function onLoaded(img, filename, dataUrl){
+      const s = sides[sideKey];
+      s.img = img; s.originalSrc = dataUrl; s.fileName = filename;
+      s.zoom=1; s.fineRotate=0; s.brightness=100; s.contrast=100; s.saturate=100;
+      s.hue=0; s.temperature=0; s.tint=0; s.grayscale=false; s.invert=false;
+      s.vignette=0; s.sharpen=0; s.textEnhance=0;
+      thumbImgEl.src = dataUrl;
+      thumbNameEl.textContent = filename;
+      thumbDimsEl.textContent = img.naturalWidth+' x '+img.naturalHeight+' px';
+      thumbRowEl.style.display = 'flex';
+      dropzoneEl.style.display = 'none';
+      initSideFresh(sideKey);
+      if(activeSide === sideKey) renderActiveCropUI();
+      renderSheetPreview();
+    }
+ 
+    sides[sideKey]._onLoaded = onLoaded;
+    sides[sideKey]._dropzoneEl = dropzoneEl;
+  }
+ 
+  wireUploader(
+    document.getElementById('dropzone'), document.getElementById('fileInput'),
+    document.getElementById('thumbRow'), document.getElementById('thumbImg'),
+    document.getElementById('thumbName'), document.getElementById('thumbDims'),
+    document.getElementById('changePhotoBtn'), 'front'
+  );
+  wireUploader(
+    document.getElementById('dropzoneBack'), document.getElementById('fileInputBack'),
+    document.getElementById('thumbRowBack'), document.getElementById('thumbImgBack'),
+    document.getElementById('thumbNameBack'), document.getElementById('thumbDimsBack'),
+    document.getElementById('changePhotoBtnBack'), 'back'
+  );
+ 
+  function routeFile(file, sideKey){
+    if(file.type === 'application/pdf' || /\.pdf$/i.test(file.name)){
+      handlePdfFile(file, sideKey);
+    } else if(file.type.startsWith('image/')){
+      handleImageFile(file, sideKey);
+    } else {
+      alert('Please choose a photo (jpg/png) or a PDF document.');
+    }
+  }
+ 
+  function handleImageFile(file, sideKey){
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const img = new Image();
+      img.onload = ()=> sides[sideKey]._onLoaded(img, file.name, ev.target.result);
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+ 
+  async function handlePdfFile(file, sideKey){
+    if(!window.pdfjsLib){ alert('PDF support failed to load — check your internet connection and try again.'); return; }
+    const buf = await file.arrayBuffer();
+    let password = undefined;
+    let pdf = null;
+    while(true){
+      try{
+        const opts = { data: new Uint8Array(buf.slice(0)) };
+        if(password !== undefined) opts.password = password;
+        const task = pdfjsLib.getDocument(opts);
+        pdf = await task.promise;
+        break;
+      }catch(err){
+        if(err && err.name === 'PasswordException'){
+          try{
+            password = await promptForPassword(err.code === 2);
+          }catch(cancelled){
+            return; 
+          }
+          continue;
+        } else {
+          alert('Could not open this PDF: ' + (err && err.message ? err.message : 'unknown error'));
+          return;
+        }
+      }
+    }
+    try{
+      const page = await pdf.getPage(1);
+      const vp1 = page.getViewport({scale:1});
+      // e-Aadhaar / e-PAN pages are usually a full A4 sheet with the actual
+      // card + text occupying only part of it, so the raster needs to be
+      // high-res BEFORE cropping or the card text goes soft. Render close to
+      // true print resolution (~300 DPI equivalent on an A4 page), capped so
+      // we don't blow up memory on huge/unusual PDFs.
+      const targetLong = Math.min(4200, Math.max(2400, Math.round(Math.max(vp1.width, vp1.height) * (300/72))));
+      const scale = targetLong / Math.max(vp1.width, vp1.height);
+      const viewport = page.getViewport({scale});
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      await page.render({canvasContext:ctx, viewport, intent:'print'}).promise;
+      const dataUrl = canvas.toDataURL('image/png');
+      const img = new Image();
+      img.onload = ()=> sides[sideKey]._onLoaded(img, file.name, dataUrl);
+      img.src = dataUrl;
+    }catch(err){
+      alert('Could not render this PDF page: ' + (err && err.message ? err.message : 'unknown error'));
+    }
+  }
+ 
+  const presetGrid = document.getElementById('presetGrid');
+  const widthMmInput = document.getElementById('widthMm');
+  const heightMmInput = document.getElementById('heightMm');
+  const presetNameInput = document.getElementById('presetName');
+  const hdrFormat = document.getElementById('hdrFormat');
+  const hdrSize = document.getElementById('hdrSize');
+  const cardDetailsStep = document.getElementById('cardDetailsStep');
+  const frontLabel = document.getElementById('frontLabel');
+  const backUploadBlock = document.getElementById('backUploadBlock');
+  const sideTabs = document.getElementById('sideTabs');
+  const uploadHint = document.getElementById('uploadHint');
+ 
+  PRESETS.forEach((p,i)=>{
+    const card = document.createElement('div');
+    card.className = 'preset-card' + (i===0?' sel':'');
+    card.innerHTML = '<div class="pname">'+p.name+'</div>'+
+      '<div class="pdim">'+p.w+' × '+p.h+' mm</div>'+
+      '<div class="pcat">'+p.cat+'</div>' +
+      (p.twoSided ? '<div class="ptwo">2-SIDED</div>' : '');
+    card.addEventListener('click', ()=> selectPreset(i, card));
+    presetGrid.appendChild(card);
+  });
+ 
+  function selectPreset(i, cardEl){
+    document.querySelectorAll('.preset-card').forEach(c=>c.classList.remove('sel'));
+    cardEl.classList.add('sel');
+    g.preset = PRESETS[i];
+    g.wMm = PRESETS[i].w;
+    g.hMm = PRESETS[i].h;
+    widthMmInput.value = g.wMm;
+    heightMmInput.value = g.hMm;
+    presetNameInput.value = PRESETS[i].name;
+    cardDetailsStep.style.display = PRESETS[i].twoSided ? 'grid' : 'none';
+    applyTwoSidedUI();
+    updateHeader();
+    initSideFresh('front'); initSideFresh('back');
+    renderActiveCropUI();
+    refreshSheetStats();
+  }
+ 
+  function applyTwoSidedUI(){
+    const two = !!g.preset.twoSided;
+    frontLabel.style.display = two ? 'block' : 'none';
+    backUploadBlock.style.display = two ? 'block' : 'none';
+    sideTabs.style.display = two ? 'flex' : 'none';
+    uploadHint.textContent = two
+      ? 'this document needs both sides — jpg, png or pdf for each, password-protected pdf ok'
+      : 'jpg · png · pdf — Aadhaar / PAN e-copies supported, even password-protected ones';
+    if(!two && activeSide==='back'){ switchSide('front'); }
+  }
+ 
+  widthMmInput.addEventListener('input', ()=>{
+    g.wMm = parseFloat(widthMmInput.value)||g.wMm;
+    presetNameInput.value = 'Custom';
+    updateHeader(); initSideFresh('front'); initSideFresh('back'); renderActiveCropUI(); refreshSheetStats();
+  });
+  heightMmInput.addEventListener('input', ()=>{
+    g.hMm = parseFloat(heightMmInput.value)||g.hMm;
+    presetNameInput.value = 'Custom';
+    updateHeader(); initSideFresh('front'); initSideFresh('back'); renderActiveCropUI(); refreshSheetStats();
+  });
+ 
+  function updateHeader(){
+    hdrFormat.textContent = presetNameInput.value;
+    hdrSize.textContent = g.wMm+'×'+g.hMm+'mm';
+  }
+  widthMmInput.value = g.wMm; heightMmInput.value = g.hMm; updateHeader();
+ 
+  const cropOuter = document.getElementById('cropOuter');
+  const cropRotateWrap = document.getElementById('cropRotateWrap');
+  const cropImg = document.getElementById('cropImg');
+  const cropBgColorLayer = document.getElementById('cropBgColorLayer');
+  const cropVignetteLayer = document.getElementById('cropVignetteLayer');
+  const photoBgColorPicker = document.getElementById('photoBgColorPicker');
+
+  const zoomSlider = document.getElementById('zoomSlider');
+  const zoomVal = document.getElementById('zoomVal');
+  const straightenSlider = document.getElementById('straightenSlider');
+  const straightenVal = document.getElementById('straightenVal');
+  const brightSlider = document.getElementById('brightSlider');
+  const brightVal = document.getElementById('brightVal');
+  const contrastSlider = document.getElementById('contrastSlider');
+  const contrastVal = document.getElementById('contrastVal');
+  const satSlider = document.getElementById('satSlider');
+  const satVal = document.getElementById('satVal');
+  const tempSlider = document.getElementById('tempSlider');
+  const tempVal = document.getElementById('tempVal');
+  const tintSlider = document.getElementById('tintSlider');
+  const tintVal = document.getElementById('tintVal');
+  const hueSlider = document.getElementById('hueSlider');
+  const hueVal = document.getElementById('hueVal');
+  const grayscaleChk = document.getElementById('grayscaleChk');
+  const invertChk = document.getElementById('invertChk');
+  const sharpenSlider = document.getElementById('sharpenSlider');
+  const sharpenVal = document.getElementById('sharpenVal');
+  const textEnhanceSlider = document.getElementById('textEnhanceSlider');
+  const textEnhanceVal = document.getElementById('textEnhanceVal');
+  const vignetteSlider = document.getElementById('vignetteSlider');
+  const vignetteVal = document.getElementById('vignetteVal');
+
+  const autoEnhanceBtn = document.getElementById('autoEnhanceBtn');
+
+  const resetCropBtn = document.getElementById('resetCropBtn');
+  const resetAllBtn = document.getElementById('resetAllBtn');
+  const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+  const rotateRightBtn = document.getElementById('rotateRightBtn');
+  const flipBtn = document.getElementById('flipBtn');
+  const tabFrontBtn = document.getElementById('tabFrontBtn');
+  const tabBackBtn = document.getElementById('tabBackBtn');
+ 
+  function switchSide(sideKey){
+    activeSide = sideKey;
+    tabFrontBtn.classList.toggle('ghost', sideKey!=='front');
+    tabBackBtn.classList.toggle('ghost', sideKey!=='back');
+    renderActiveCropUI();
+  }
+  tabFrontBtn.addEventListener('click', ()=> switchSide('front'));
+  tabBackBtn.addEventListener('click', ()=> switchSide('back'));
+ 
+  function computeBoxDims(s){
+    const aspect = g.wMm/g.hMm;
+    let boxW, boxH; const MAXW=300, MAXH=340;
+    if(aspect>=1){ boxW=MAXW; boxH=boxW/aspect; if(boxH>MAXH){boxH=MAXH;boxW=boxH*aspect;} }
+    else { boxH=MAXH; boxW=boxH*aspect; if(boxW>MAXW){boxW=MAXW;boxH=boxW/aspect;} }
+    s.boxW=boxW; s.boxH=boxH;
+  }
+ 
+  function initSideFresh(sideKey){
+    const s = sides[sideKey];
+    computeBoxDims(s);
+    if(!s.img) return;
+    const nW=s.img.naturalWidth, nH=s.img.naturalHeight;
+    s.baseScale = Math.max(s.boxW/nW, s.boxH/nH);
+    s.zoom=1; s.fineRotate=0; s.brightness=100; s.contrast=100; s.saturate=100;
+    s.hue=0; s.temperature=0; s.tint=0; s.grayscale=false; s.invert=false;
+    s.vignette=0; s.sharpen=0; s.textEnhance=0;
+    const dispW=nW*s.baseScale, dispH=nH*s.baseScale;
+    s.offsetX=(s.boxW-dispW)/2; s.offsetY=(s.boxH-dispH)/2;
+  }
+ 
+  function compensateFactor(s){
+    const rad = s.fineRotate*Math.PI/180;
+    return 1 + Math.tan(Math.abs(rad))*0.6;
+  }
+ 
+  function applyCropTransformFor(s){
+    cropOuter.style.width = (s.boxW||0)+'px';
+    cropOuter.style.height = (s.boxH||0)+'px';
+    
+    cropBgColorLayer.style.backgroundColor = s.bgColor;
+    photoBgColorPicker.value = s.bgColor;
+
+    if(cropVignetteLayer){
+      const amt = (s.vignette||0)/100;
+      cropVignetteLayer.style.background = amt>0
+        ? 'radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,'+(amt*0.85).toFixed(2)+') 100%)'
+        : 'transparent';
+    }
+
+    if(!s.img){ cropImg.removeAttribute('src'); return; }
+    const scale = s.baseScale*s.zoom*compensateFactor(s);
+    cropImg.style.transform = 'translate('+s.offsetX+'px,'+s.offsetY+'px) scale('+scale+')';
+    cropImg.style.width = s.img.naturalWidth+'px';
+    cropImg.style.height = s.img.naturalHeight+'px';
+    cropImg.style.filter = cssFilterString(s);
+    cropRotateWrap.style.transform = 'rotate('+s.fineRotate+'deg)';
+    clampOffset(s);
+    renderSheetPreview();
+  }
+ 
+  function clampOffset(s){
+    const scale = s.baseScale*s.zoom*compensateFactor(s);
+    const dispW = s.img.naturalWidth*scale, dispH = s.img.naturalHeight*scale;
+    const minX = s.boxW - dispW, minY = s.boxH - dispH;
+    if(s.offsetX > 0) s.offsetX = 0;
+    if(s.offsetY > 0) s.offsetY = 0;
+    if(s.offsetX < minX) s.offsetX = minX;
+    if(s.offsetY < minY) s.offsetY = minY;
+  }
+ 
+  function syncEditSliders(s){
+    let percentZoom = Math.round(s.zoom*100);
+    zoomSlider.value = percentZoom; zoomVal.value = percentZoom;
+    straightenSlider.value = s.fineRotate; straightenVal.value = s.fineRotate;
+    brightSlider.value = s.brightness; brightVal.value = s.brightness;
+    contrastSlider.value = s.contrast; contrastVal.value = s.contrast;
+    satSlider.value = s.saturate; satVal.value = s.saturate;
+    tempSlider.value = s.temperature||0; tempVal.value = s.temperature||0;
+    tintSlider.value = s.tint||0; tintVal.value = s.tint||0;
+    hueSlider.value = s.hue||0; hueVal.value = s.hue||0;
+    grayscaleChk.checked = !!s.grayscale;
+    invertChk.checked = !!s.invert;
+    sharpenSlider.value = s.sharpen||0; sharpenVal.value = s.sharpen||0;
+    textEnhanceSlider.value = s.textEnhance||0; textEnhanceVal.value = s.textEnhance||0;
+    vignetteSlider.value = s.vignette||0; vignetteVal.value = s.vignette||0;
+  }
+ 
+  function renderActiveCropUI(){
+    const s = sides[activeSide];
+    if(s.img) cropImg.src = s.img.src;
+    syncEditSliders(s);
+    applyCropTransformFor(s);
+  }
+ 
+  function handleZoom(val) {
+    let v = parseFloat(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.zoom = v/100;
+    zoomSlider.value = v; zoomVal.value = v; applyCropTransformFor(s);
+  }
+  zoomSlider.addEventListener('input', e=> handleZoom(e.target.value));
+  zoomVal.addEventListener('input', e=> handleZoom(e.target.value));
+
+  function handleStraighten(val) {
+    let v = parseFloat(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.fineRotate = v;
+    straightenSlider.value = v; straightenVal.value = v; applyCropTransformFor(s);
+  }
+  straightenSlider.addEventListener('input', e=> handleStraighten(e.target.value));
+  straightenVal.addEventListener('input', e=> handleStraighten(e.target.value));
+
+  function handleBright(val) {
+    let v = parseInt(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.brightness = v;
+    brightSlider.value = v; brightVal.value = v; applyCropTransformFor(s);
+  }
+  brightSlider.addEventListener('input', e=> handleBright(e.target.value));
+  brightVal.addEventListener('input', e=> handleBright(e.target.value));
+
+  function handleContrast(val) {
+    let v = parseInt(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.contrast = v;
+    contrastSlider.value = v; contrastVal.value = v; applyCropTransformFor(s);
+  }
+  contrastSlider.addEventListener('input', e=> handleContrast(e.target.value));
+  contrastVal.addEventListener('input', e=> handleContrast(e.target.value));
+
+  function handleSat(val) {
+    let v = parseInt(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.saturate = v;
+    satSlider.value = v; satVal.value = v; applyCropTransformFor(s);
+  }
+  satSlider.addEventListener('input', e=> handleSat(e.target.value));
+  satVal.addEventListener('input', e=> handleSat(e.target.value));
+
+  function handleTemp(val) {
+    let v = parseFloat(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.temperature = v;
+    tempSlider.value = v; tempVal.value = v; applyCropTransformFor(s);
+  }
+  tempSlider.addEventListener('input', e=> handleTemp(e.target.value));
+  tempVal.addEventListener('input', e=> handleTemp(e.target.value));
+
+  function handleTint(val) {
+    let v = parseFloat(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.tint = v;
+    tintSlider.value = v; tintVal.value = v; applyCropTransformFor(s);
+  }
+  tintSlider.addEventListener('input', e=> handleTint(e.target.value));
+  tintVal.addEventListener('input', e=> handleTint(e.target.value));
+
+  function handleHue(val) {
+    let v = parseFloat(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.hue = v;
+    hueSlider.value = v; hueVal.value = v; applyCropTransformFor(s);
+  }
+  hueSlider.addEventListener('input', e=> handleHue(e.target.value));
+  hueVal.addEventListener('input', e=> handleHue(e.target.value));
+
+  grayscaleChk.addEventListener('change', e=>{
+    const s=sides[activeSide]; s.grayscale = e.target.checked; applyCropTransformFor(s);
+  });
+  invertChk.addEventListener('change', e=>{
+    const s=sides[activeSide]; s.invert = e.target.checked; applyCropTransformFor(s);
+  });
+
+  function handleSharpen(val) {
+    let v = parseInt(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.sharpen = v;
+    sharpenSlider.value = v; sharpenVal.value = v; renderSheetPreview();
+  }
+  sharpenSlider.addEventListener('input', e=> handleSharpen(e.target.value));
+  sharpenVal.addEventListener('input', e=> handleSharpen(e.target.value));
+
+  function handleTextEnhance(val) {
+    let v = parseInt(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.textEnhance = v;
+    textEnhanceSlider.value = v; textEnhanceVal.value = v; renderSheetPreview();
+  }
+  textEnhanceSlider.addEventListener('input', e=> handleTextEnhance(e.target.value));
+  textEnhanceVal.addEventListener('input', e=> handleTextEnhance(e.target.value));
+
+  function handleVignette(val) {
+    let v = parseInt(val); if(isNaN(v)) return;
+    const s=sides[activeSide]; s.vignette = v;
+    vignetteSlider.value = v; vignetteVal.value = v; applyCropTransformFor(s);
+  }
+  vignetteSlider.addEventListener('input', e=> handleVignette(e.target.value));
+  vignetteVal.addEventListener('input', e=> handleVignette(e.target.value));
+
+  photoBgColorPicker.addEventListener('input', e => {
+    const s = sides[activeSide];
+    s.bgColor = e.target.value;
+    applyCropTransformFor(s);
+  });
+  
+  // Real auto-enhance: samples the photo's own pixels and builds an actual
+  // luminance histogram, then derives correction the way a real auto-levels
+  // tool does — percentile black/white points (ignores stray dark/bright
+  // outlier pixels instead of naive min/max), a gray-world white-balance
+  // estimate to cancel colour casts (yellow scans, cool flash, etc.), and a
+  // saturation/sharpen amount scaled to what THIS photo actually needs —
+  // not a fixed hardcoded boost applied to every photo.
+  function analyzeAndEnhance(s){
+    const SAMPLE = 220;
+    const c = document.createElement('canvas');
+    c.width = SAMPLE; c.height = SAMPLE;
+    const cx = c.getContext('2d');
+    cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+    cx.drawImage(s.img, 0, 0, SAMPLE, SAMPLE);
+    let data;
+    try{ data = cx.getImageData(0,0,SAMPLE,SAMPLE).data; }
+    catch(e){ return null; } // tainted canvas (cross-origin) safety net
+
+    const n = SAMPLE*SAMPLE;
+    const lumHist = new Uint32Array(256);
+    let sumR=0, sumG=0, sumB=0, sumSat=0;
+    for(let i=0;i<data.length;i+=4){
+      const r=data[i], gg=data[i+1], b=data[i+2];
+      const lum = (0.299*r + 0.587*gg + 0.114*b) | 0;
+      lumHist[lum]++;
+      sumR+=r; sumG+=gg; sumB+=b;
+      const maxc=Math.max(r,gg,b), minc=Math.min(r,gg,b);
+      sumSat += maxc===0 ? 0 : (maxc-minc)/maxc;
+    }
+
+    // 1st/99th percentile luminance = real auto-levels black/white points,
+    // robust against a few pure-black or blown-out outlier pixels.
+    function percentileLum(p){
+      const target = p*n;
+      let run=0;
+      for(let v=0;v<256;v++){ run+=lumHist[v]; if(run>=target) return v; }
+      return 255;
+    }
+    const loP = percentileLum(0.01), hiP = percentileLum(0.99);
+    const spread = Math.max(1, hiP-loP);
+
+    const avgLum = (sumR*0.299 + sumG*0.587 + sumB*0.114)/n;
+    const avgSat = sumSat/n;
+    const avgR = sumR/n, avgG = sumG/n, avgB = sumB/n;
+    const grayAvg = (avgR+avgG+avgB)/3;
+
+    let contrast = Math.round(100 * (185/spread));
+    contrast = Math.max(100, Math.min(150, contrast));
+
+    let brightness = Math.round(100 + (128-avgLum)*0.22 - loP*0.12);
+    brightness = Math.max(85, Math.min(130, brightness));
+
+    let saturate = Math.round(100 + (0.42-avgSat)*60);
+    saturate = Math.max(100, Math.min(145, saturate));
+
+    // Gray-world white balance: if red/blue or green channel is skewed vs a
+    // neutral gray, nudge temperature/tint the opposite way to cancel it.
+    let temperature = Math.round(((avgR-avgB)/255) * -140);
+    temperature = Math.max(-30, Math.min(30, temperature));
+    let tint = Math.round(((avgG-grayAvg)/255) * -140);
+    tint = Math.max(-25, Math.min(25, tint));
+
+    return {brightness, contrast, saturate, temperature, tint};
+  }
+
+  // Pure data step — mutates the side's brightness/contrast/saturate/temp/tint/
+  // sharpen fields from analyzeAndEnhance(). Shared by the standalone "Smart
+  // Enhance" button and the "AI Auto" one-click pipeline.
+  function applySmartEnhance(s){
+    const result = analyzeAndEnhance(s);
+    if(result){
+      s.brightness = result.brightness;
+      s.contrast = result.contrast;
+      s.saturate = result.saturate;
+      s.temperature = result.temperature;
+      s.tint = result.tint;
+    } else {
+      // fallback if pixel analysis wasn't possible
+      s.brightness = 108; s.contrast = 112; s.saturate = 110;
+    }
+    // Scale sharpen to the source resolution — a high-res scan/PDF can take
+    // more sharpening before artifacts show than a small phone photo can.
+    // Text Enhance (below) already does a proper unsharp pass on document
+    // presets, so sharpen is kept modest there to avoid the two effects
+    // stacking into over-sharpened/torn-looking text at high resolution.
+    const longSide = Math.max(s.img.naturalWidth, s.img.naturalHeight);
+    const isDocPreset = (g.preset.cat === 'Lamination' || g.preset.cat === 'Document');
+    if(isDocPreset){
+      s.sharpen = Math.max(s.sharpen||0, 12);
+    } else {
+      s.sharpen = Math.max(s.sharpen||0, longSide > 1800 ? 26 : longSide > 900 ? 20 : 14);
+    }
+    // Text Enhance (unsharp mask) — stronger by default on Lamination/
+    // Document presets, since that's scanned card/ID text (Aadhaar, PAN,
+    // DL, Voter ID) that needs real deblurring, vs a milder touch on a
+    // Photo preset where over-sharpening a face looks harsh. Kept well
+    // under 100 even at high resolution — the unsharp pass itself scales
+    // its effect with resolution already, so defaults don't need to.
+    let textAmt = isDocPreset ? 40 : 18;
+    if(longSide > 2200) textAmt += 6;
+    s.textEnhance = Math.max(s.textEnhance||0, Math.min(100, textAmt));
+  }
+
+  const textEnhanceAutoBtn = document.getElementById('textEnhanceAutoBtn');
+  textEnhanceAutoBtn.addEventListener('click', () => {
+    const s = sides[activeSide];
+    if(!s.img) { alert('Please upload a photo first.'); return; }
+    const isDocPreset = (g.preset.cat === 'Lamination' || g.preset.cat === 'Document');
+    const longSide = Math.max(s.img.naturalWidth, s.img.naturalHeight);
+    let amt = isDocPreset ? 45 : 22;
+    if(longSide > 2200) amt += 6;
+    s.textEnhance = Math.min(100, amt);
+    syncEditSliders(s);
+    applyCropTransformFor(s);
+    renderSheetPreview();
+  });
+
+  autoEnhanceBtn.addEventListener('click', () => {
+    const s = sides[activeSide];
+    if(!s.img) return;
+    applySmartEnhance(s);
+    syncEditSliders(s);
+    applyCropTransformFor(s);
+    renderSheetPreview();
+  });
+  
+  // Persistent, visible status line for the enhance actions below —
+  // keeps feedback visible even if a browser suppresses alert().
+  const statusLine = document.getElementById('statusLine');
+  function showStatus(msg, isError){
+    if(!statusLine) return;
+    statusLine.style.display = 'block';
+    statusLine.style.color = isError ? 'var(--danger)' : 'var(--text-dim)';
+    statusLine.style.borderColor = isError ? 'var(--danger)' : 'var(--line)';
+    statusLine.textContent = msg;
+  }
+
+  // Global safety net: any error thrown outside a try/catch, or an
+  // unhandled promise rejection, gets written to the visible status line
+  // instead of failing invisibly (which is what an unexplained "blank
+  // preview" almost always is).
+  window.addEventListener('error', function(e){
+    console.error('Uncaught error:', e.error || e.message);
+    showStatus('Unexpected error: ' + (e && e.message ? e.message : 'unknown error'), true);
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    const reason = e && e.reason;
+    console.error('Unhandled promise rejection:', reason);
+    showStatus('Unexpected error: ' + (reason && reason.message ? reason.message : String(reason)), true);
+    e.preventDefault();
+  });
+
+  // "Auto Enhance" — centre-crops (fills the frame sensibly) and runs the
+  // existing pure-canvas Smart Enhance + a light Text Enhance pass, all in
+  // one click. Deliberately has NO external model/CDN dependency, so it
+  // can never fail to load or crash the preview — it's the same math as
+  // the Smart Enhance / Text Enhance buttons, just run together.
+  const autoOneClickBtn = document.getElementById('autoOneClickBtn');
+  autoOneClickBtn.addEventListener('click', () => {
+    const s = sides[activeSide];
+    if(!s.img) { alert('Please upload a photo first.'); return; }
+    const origLabel = autoOneClickBtn.textContent;
+    autoOneClickBtn.disabled = true;
+    showStatus('Applying auto enhance...');
+    try {
+      initSideFresh(activeSide);
+      applySmartEnhance(s);
+      syncEditSliders(s);
+      applyCropTransformFor(s);
+      renderSheetPreview();
+      autoOneClickBtn.textContent = 'Enhanced ✓';
+      showStatus('Auto Enhance completed successfully.');
+    } catch (err) {
+      console.error('Auto Enhance error:', err);
+      showStatus('Auto Enhance failed: ' + (err && err.message ? err.message : 'unknown error'), true);
+      alert('Auto Enhance hit an error: ' + (err && err.message ? err.message : 'unknown error'));
+      autoOneClickBtn.textContent = origLabel;
+    } finally {
+      setTimeout(() => { autoOneClickBtn.textContent = origLabel; autoOneClickBtn.disabled = false; }, 2000);
+    }
+  });
+
+
+  resetCropBtn.addEventListener('click', ()=>{ initSideFresh(activeSide); renderActiveCropUI(); });
+  resetAllBtn.addEventListener('click', ()=>{
+    const s = sides[activeSide];
+    if(!s.originalSrc) return;
+    const img = new Image();
+    img.onload = ()=>{ s.img = img; initSideFresh(activeSide); renderActiveCropUI(); };
+    img.src = s.originalSrc;
+  });
+ 
+  function rotateImage90(direction){
+    const s = sides[activeSide];
+    if(!s.img) return;
+    const src = s.img;
+    const c = document.createElement('canvas');
+    c.width = src.naturalHeight; c.height = src.naturalWidth;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.translate(c.width/2, c.height/2);
+    ctx.rotate(direction*Math.PI/2);
+    ctx.drawImage(src, -src.naturalWidth/2, -src.naturalHeight/2);
+    const newImg = new Image();
+    newImg.onload = ()=>{ s.img = newImg; initSideFresh(activeSide); renderActiveCropUI(); };
+    newImg.src = c.toDataURL('image/png');
+  }
+  function flipImageH(){
+    const s = sides[activeSide];
+    if(!s.img) return;
+    const src = s.img;
+    const c = document.createElement('canvas');
+    c.width = src.naturalWidth; c.height = src.naturalHeight;
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.translate(c.width,0); ctx.scale(-1,1);
+    ctx.drawImage(src,0,0);
+    const newImg = new Image();
+    newImg.onload = ()=>{ s.img = newImg; initSideFresh(activeSide); renderActiveCropUI(); };
+    newImg.src = c.toDataURL('image/png');
+  }
+  rotateLeftBtn.addEventListener('click', ()=> rotateImage90(-1));
+  rotateRightBtn.addEventListener('click', ()=> rotateImage90(1));
+  flipBtn.addEventListener('click', flipImageH);
+ 
+  let dragging=false, dragStartX=0, dragStartY=0, startOffX=0, startOffY=0;
+  cropOuter.addEventListener('mousedown', e=>{
+    const s = sides[activeSide];
+    if(!s.img) return;
+    dragging=true; dragStartX=e.clientX; dragStartY=e.clientY;
+    startOffX=s.offsetX; startOffY=s.offsetY;
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const s = sides[activeSide];
+    s.offsetX = startOffX + (e.clientX-dragStartX);
+    s.offsetY = startOffY + (e.clientY-dragStartY);
+    applyCropTransformFor(s);
+  });
+  window.addEventListener('mouseup', ()=> dragging=false);
+ 
+  cropOuter.addEventListener('touchstart', e=>{
+    const s = sides[activeSide];
+    if(!s.img || !e.touches[0]) return;
+    dragging=true;
+    dragStartX=e.touches[0].clientX; dragStartY=e.touches[0].clientY;
+    startOffX=s.offsetX; startOffY=s.offsetY;
+  }, {passive:true});
+  cropOuter.addEventListener('touchmove', e=>{
+    if(!dragging || !e.touches[0]) return;
+    const s = sides[activeSide];
+    s.offsetX = startOffX + (e.touches[0].clientX-dragStartX);
+    s.offsetY = startOffY + (e.touches[0].clientY-dragStartY);
+    applyCropTransformFor(s);
+  }, {passive:true});
+  cropOuter.addEventListener('touchend', ()=> dragging=false);
+ 
+  function renderCroppedCanvas(sideKey, targetPxW, targetPxH){
+    const s = sides[sideKey];
+    const inter = document.createElement('canvas');
+    inter.width = targetPxW; inter.height = targetPxH;
+    const ictx = inter.getContext('2d');
+    ictx.imageSmoothingEnabled = true; ictx.imageSmoothingQuality = 'high';
+    
+    ictx.fillStyle = s.bgColor;
+    ictx.fillRect(0,0,targetPxW,targetPxH);
+    
+    if(s.img){
+      const outScale = targetPxW / s.boxW;
+      const scale = s.baseScale*s.zoom*compensateFactor(s)*outScale;
+      const dx = s.offsetX*outScale, dy = s.offsetY*outScale;
+      const dw = s.img.naturalWidth*scale, dh = s.img.naturalHeight*scale;
+      try{ ictx.filter = cssFilterString(s); }catch(e){}
+      ictx.drawImage(s.img, dx, dy, dw, dh);
+      ictx.filter = 'none';
+    }
+    let result = inter;
+    if(Math.abs(s.fineRotate) >= 0.01){
+      const final = document.createElement('canvas');
+      final.width = targetPxW; final.height = targetPxH;
+      const fctx = final.getContext('2d');
+      fctx.imageSmoothingEnabled = true; fctx.imageSmoothingQuality = 'high';
+
+      fctx.fillStyle = s.bgColor;
+      fctx.fillRect(0,0,targetPxW,targetPxH);
+
+      fctx.save();
+      fctx.translate(targetPxW/2, targetPxH/2);
+      fctx.rotate(s.fineRotate*Math.PI/180);
+      fctx.drawImage(inter, -targetPxW/2, -targetPxH/2);
+      fctx.restore();
+      result = final;
+    }
+    if(s.sharpen) applySharpen(result, s.sharpen);
+    if(s.textEnhance) applyTextEnhance(result, s.textEnhance);
+    if(s.vignette) applyVignette(result, s.vignette);
+    return result;
+  }
+ 
+  const swatchesEl = document.getElementById('swatches');
+  SWATCH_COLORS.forEach((c,i)=>{
+    const sw = document.createElement('div');
+    sw.className = 'swatch'+(i===0?' sel':'');
+    sw.style.background = c;
+    sw.addEventListener('click', ()=>{
+      document.querySelectorAll('.swatch').forEach(el=>el.classList.remove('sel'));
+      sw.classList.add('sel');
+      g.accent = c;
+      renderSheetPreview();
+    });
+    swatchesEl.appendChild(sw);
+  });
+  document.getElementById('cardName').addEventListener('input', e=>{ g.cardName = e.target.value; renderSheetPreview(); });
+  document.getElementById('cardSub').addEventListener('input', e=>{ g.cardSub = e.target.value; renderSheetPreview(); });
+ 
+  function applyCardOverlay(canvas){
+    if(!g.preset.twoSided) return canvas;
+    if(!g.cardName && !g.cardSub) return canvas;
+    const ctx = canvas.getContext('2d');
+    const stripH = canvas.height*0.20;
+    const y0 = canvas.height - stripH;
+    ctx.fillStyle = g.accent;
+    ctx.fillRect(0, y0, canvas.width, stripH);
+    ctx.fillStyle = (g.accent === '#ffffff') ? '#1c1a17' : '#ffffff';
+    ctx.textBaseline = 'middle';
+    ctx.font = '700 '+Math.round(stripH*0.36)+'px Arial';
+    ctx.fillText(g.cardName || '', canvas.width*0.05, y0+stripH*0.38, canvas.width*0.9);
+    ctx.font = '400 '+Math.round(stripH*0.26)+'px Arial';
+    ctx.fillText(g.cardSub || '', canvas.width*0.05, y0+stripH*0.72, canvas.width*0.9);
+    return canvas;
+  }
+ 
+  const sheetSizeSel = document.getElementById('sheetSize');
+  const customSheetRow = document.getElementById('customSheetRow');
+  const sheetWmmInput = document.getElementById('sheetWmm');
+  const sheetHmmInput = document.getElementById('sheetHmm');
+  const copyCountInput = document.getElementById('copyCount');
+  
+  const marginLeftMmInput = document.getElementById('marginLeftMm');
+  const marginTopMmInput = document.getElementById('marginTopMm');
+  
+  const strokeOnChk = document.getElementById('strokeOn');
+  const strokeOptions = document.getElementById('strokeOptions');
+  const strokeWidthInput = document.getElementById('strokeWidthMm');
+  const strokeColorInput = document.getElementById('strokeColor');
+  const addGuidesChk = document.getElementById('addGuides');
+  const maxCopiesEl = document.getElementById('maxCopies');
+  const outResEl = document.getElementById('outRes');
+  const sheetCanvas = document.getElementById('sheetCanvas');
+  const exportFormatSel = document.getElementById('exportFormat');
+ 
+  const SHEET_PRESETS = { "4x6":{w:101.6,h:152.4}, "5x7":{w:127,h:177.8}, "a4":{w:210,h:297} };
+ 
+  sheetSizeSel.addEventListener('change', ()=>{
+    g.sheetKind = sheetSizeSel.value;
+    customSheetRow.style.display = g.sheetKind==='custom' ? 'flex' : 'none';
+    if(SHEET_PRESETS[g.sheetKind]){
+      g.sheetWmm = SHEET_PRESETS[g.sheetKind].w;
+      g.sheetHmm = SHEET_PRESETS[g.sheetKind].h;
+    }
+    refreshSheetStats();
+  });
+  sheetWmmInput.addEventListener('input', ()=>{ g.sheetWmm=parseFloat(sheetWmmInput.value)||g.sheetWmm; refreshSheetStats(); });
+  sheetHmmInput.addEventListener('input', ()=>{ g.sheetHmm=parseFloat(sheetHmmInput.value)||g.sheetHmm; refreshSheetStats(); });
+  copyCountInput.addEventListener('input', ()=>{ g.copies=Math.max(1,parseInt(copyCountInput.value)||1); renderSheetPreview(); });
+
+  const dpiSelect = document.getElementById('dpiSelect');
+  const hdrDpi = document.getElementById('hdrDpi');
+  const cornerRadiusMmInput = document.getElementById('cornerRadiusMm');
+  dpiSelect.addEventListener('change', ()=>{
+    DPI = parseInt(dpiSelect.value)||300;
+    hdrDpi.textContent = DPI;
+    refreshSheetStats();
+  });
+  cornerRadiusMmInput.addEventListener('input', ()=>{
+    g.cornerRadiusMm = Math.max(0, parseFloat(cornerRadiusMmInput.value)||0);
+    renderSheetPreview();
+  });
+  
+  marginLeftMmInput.addEventListener('input', ()=>{ g.marginLeft = parseFloat(marginLeftMmInput.value)||0; refreshSheetStats(); });
+  marginTopMmInput.addEventListener('input', ()=>{ g.marginTop = parseFloat(marginTopMmInput.value)||0; refreshSheetStats(); });
+  
+  strokeOnChk.addEventListener('change', ()=>{
+    g.strokeOn = strokeOnChk.checked;
+    strokeOptions.style.display = g.strokeOn ? 'flex':'none';
+    refreshSheetStats();
+  });
+  strokeWidthInput.addEventListener('input', ()=>{ g.strokeWidthMm = parseFloat(strokeWidthInput.value)||g.strokeWidthMm; refreshSheetStats(); });
+  strokeColorInput.addEventListener('input', ()=>{ g.strokeColor = strokeColorInput.value; renderSheetPreview(); });
+  addGuidesChk.addEventListener('change', ()=>{ g.addGuides = addGuidesChk.checked; renderSheetPreview(); });
+ 
+  function computeGrid(){
+    const strokeMm = g.strokeOn ? g.strokeWidthMm*2 : 0;
+    const singleCellW = g.wMm + strokeMm;
+    const singleCellH = g.hMm + strokeMm;
+    const unitW = g.preset.twoSided ? (singleCellW*2 + INNER_GUTTER_MM) : singleCellW;
+    const unitH = singleCellH;
+    
+    const usableW = g.sheetWmm - g.marginLeft;
+    const usableH = g.sheetHmm - g.marginTop;
+    
+    let cols = Math.max(0, Math.floor((usableW+GUTTER_MM)/(unitW+GUTTER_MM)));
+    let rows = Math.max(0, Math.floor((usableH+GUTTER_MM)/(unitH+GUTTER_MM)));
+    return {cols, rows, max: cols*rows, singleCellW, singleCellH, unitW, unitH};
+  }
+ 
+  function refreshSheetStats(){
+    const grid = computeGrid();
+    maxCopiesEl.textContent = grid.max > 0 ? grid.max : '0 (photo too big for sheet)';
+    if(parseInt(copyCountInput.value) > grid.max && grid.max>0) copyCountInput.value = grid.max;
+    if(!copyCountInput.value) copyCountInput.value = Math.max(1, grid.max);
+    g.copies = Math.max(1, parseInt(copyCountInput.value)||1);
+    const pxW = mmToPx(g.sheetWmm), pxH = mmToPx(g.sheetHmm);
+    outResEl.textContent = pxW+' × '+pxH+' px';
+    renderSheetPreview();
+  }
+ 
+  function renderSheetPreview(){
+    if(!sides.front.img){
+      const ctx = sheetCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      sheetCanvas.width = 300; sheetCanvas.height = 200;
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,300,200);
+      ctx.fillStyle = '#999'; ctx.font='13px Inter'; ctx.fillText('Upload a photo to preview', 40, 100);
+      return;
+    }
+    const sheetPxW = mmToPx(g.sheetWmm), sheetPxH = mmToPx(g.sheetHmm);
+    sheetCanvas.width = sheetPxW; sheetCanvas.height = sheetPxH;
+    const ctx = sheetCanvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,sheetPxW,sheetPxH);
+ 
+    const photoPxW = mmToPx(g.wMm), photoPxH = mmToPx(g.hMm);
+    let frontCanvas = applyCardOverlay(renderCroppedCanvas('front', photoPxW, photoPxH));
+    let backCanvas = g.preset.twoSided && sides.back.img ? renderCroppedCanvas('back', photoPxW, photoPxH) : null;
+ 
+    const grid = computeGrid();
+    const marginLeftPx = mmToPx(g.marginLeft);
+    const marginTopPx = mmToPx(g.marginTop);
+    const gutterPx = mmToPx(GUTTER_MM);
+    const strokePx = g.strokeOn ? mmToPx(g.strokeWidthMm) : 0;
+    const innerGutterPx = mmToPx(INNER_GUTTER_MM);
+    const cellFullW = photoPxW + strokePx*2;
+    const cellFullH = photoPxH + strokePx*2;
+    const unitPxW = g.preset.twoSided ? (cellFullW*2 + innerGutterPx) : cellFullW;
+ 
+    const cornerRadiusPx = mmToPx(g.cornerRadiusMm||0);
+    function roundedRectPath(x,y,w,h,r){
+      r = Math.min(r, w/2, h/2);
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+    }
+    function drawCard(canvas, cellX, cellY){
+      if(g.strokeOn){
+        if(cornerRadiusPx>0){
+          ctx.save(); roundedRectPath(cellX, cellY, cellFullW, cellFullH, cornerRadiusPx);
+          ctx.fillStyle = g.strokeColor; ctx.fill(); ctx.restore();
+        } else {
+          ctx.fillStyle = g.strokeColor;
+          ctx.fillRect(cellX, cellY, cellFullW, cellFullH);
+        }
+      }
+      if(cornerRadiusPx>0){
+        ctx.save();
+        roundedRectPath(cellX+strokePx, cellY+strokePx, photoPxW, photoPxH, cornerRadiusPx);
+        ctx.clip();
+        ctx.drawImage(canvas, cellX+strokePx, cellY+strokePx, photoPxW, photoPxH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(canvas, cellX+strokePx, cellY+strokePx, photoPxW, photoPxH);
+      }
+      if(g.addGuides){
+        ctx.strokeStyle = '#bbbbbb';
+        ctx.setLineDash([4,4]);
+        ctx.lineWidth = 1;
+        if(cornerRadiusPx>0){ roundedRectPath(cellX-0.5, cellY-0.5, cellFullW, cellFullH, cornerRadiusPx); ctx.stroke(); }
+        else ctx.strokeRect(cellX-0.5, cellY-0.5, cellFullW, cellFullH);
+        ctx.setLineDash([]);
+      }
+    }
+ 
+    let placed = 0;
+    outer:
+    for(let r=0;r<grid.rows;r++){
+      for(let c=0;c<grid.cols;c++){
+        if(placed >= g.copies) break outer;
+        const unitX = marginLeftPx + c*(unitPxW+gutterPx);
+        const unitY = marginTopPx + r*(cellFullH+gutterPx);
+        drawCard(frontCanvas, unitX, unitY);
+        if(g.preset.twoSided && backCanvas){
+          drawCard(backCanvas, unitX + cellFullW + innerGutterPx, unitY);
+        }
+        placed++;
+      }
+    }
+  }
+
+  function safeFileName(){
+    return (presetNameInput.value||'photo').replace(/[^a-z0-9]+/gi,'_').toLowerCase();
+  }
+
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    if(!sides.front.img){ alert('Please upload a photo first.'); return; }
+    renderSheetPreview();
+    const fmt = exportFormatSel.value;
+    const name = safeFileName();
+
+    try {
+      if(fmt === 'pdf'){
+        if(!window.jspdf){ alert('PDF export failed to load — check your internet connection and try again.'); return; }
+        const { jsPDF } = window.jspdf;
+        const orientation = g.sheetWmm > g.sheetHmm ? 'l' : 'p';
+        const pdf = new jsPDF({ orientation, unit:'mm', format:[g.sheetWmm, g.sheetHmm] });
+        pdf.addImage(sheetCanvas.toDataURL('image/png'), 'PNG', 0, 0, g.sheetWmm, g.sheetHmm);
+        pdf.save('oneclickstudio_'+name+'.pdf');
+        return;
+      }
+      const mime = fmt === 'jpg' ? 'image/jpeg' : 'image/png';
+      const ext = fmt === 'jpg' ? 'jpg' : 'png';
+      const link = document.createElement('a');
+      link.download = 'oneclickstudio_'+name+'.'+ext;
+      link.href = sheetCanvas.toDataURL(mime, 1.0);
+      link.click();
+    } catch(err){
+      console.error('Export error:', err);
+      showStatus('Export failed: ' + (err.message||'unknown error') + '. Try Reset and re-run Auto Enhance.', true);
+      alert('Export failed: ' + (err.message||'unknown error'));
+    }
+  });
+
+  document.getElementById('printBtn').addEventListener('click', ()=>{
+    if(!sides.front.img){ alert('Please upload a photo first.'); return; }
+    renderSheetPreview();
+    const dataUrl = sheetCanvas.toDataURL('image/png');
+    const w = window.open('', '_blank');
+    if(!w){ alert('Please allow pop-ups to print directly, or use Download instead.'); return; }
+    w.document.write(
+      '<html><head><title>Print — One Click Studio</title><style>'+
+      '@page{ size:'+g.sheetWmm+'mm '+g.sheetHmm+'mm; margin:0; }'+
+      'html,body{margin:0;padding:0;}'+
+      'img{width:'+g.sheetWmm+'mm;height:'+g.sheetHmm+'mm;display:block;}'+
+      '</style></head><body>'+
+      '<img src="'+dataUrl+'" onload="setTimeout(function(){window.print();},300);">'+
+      '</body></html>'
+    );
+    w.document.close();
+  });
+
+  document.getElementById('sendToPvcBtn').addEventListener('click', ()=>{
+    if(!sides.front.img){ alert('Please upload a photo first.'); return; }
+    try{
+      const photoPxW = mmToPx(g.wMm), photoPxH = mmToPx(g.hMm);
+      const frontCanvas = applyCardOverlay(renderCroppedCanvas('front', photoPxW, photoPxH));
+      const backCanvas = (g.preset.twoSided && sides.back.img) ? renderCroppedCanvas('back', photoPxW, photoPxH) : null;
+      const payload = {
+        wMm: g.wMm, hMm: g.hMm,
+        twoSided: !!g.preset.twoSided,
+        presetName: presetNameInput.value,
+        front: frontCanvas.toDataURL('image/png'),
+        back: backCanvas ? backCanvas.toDataURL('image/png') : null,
+        ts: Date.now()
+      };
+      localStorage.setItem('ocs_handoff', JSON.stringify(payload));
+      window.location.href = 'pvc-print.html?loaded=1';
+    }catch(err){
+      console.error(err);
+      alert('Could not hand off to PVC Print Studio: ' + (err && err.message ? err.message : 'unknown error'));
+    }
+  });
+
+  refreshSheetStats();
+  renderSheetPreview();
+
+})();
+</script>
+</body>
+</html>
